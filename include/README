@@ -1,0 +1,7 @@
+This directory contains symlinks back into ../vendor to make setting include
+paths easier in the build system.
+
+Any symlinks in this directory should use the version-independent symlinks in
+vendor/, in order to avoid having to update this directory when dependencies
+are updated.
+

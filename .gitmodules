@@ -1,0 +1,3 @@
+[submodule "censys-definitions"]
+	path = censys-definitions
+	url = https://github.com/Censys/censys-definitions.git

@@ -1,0 +1,27 @@
+Vendored source code. When code in this directory needs to be built, it should
+be accessed via "vendor" in premake5.lua. When it needs to be included, it
+should be acessed via "include".
+
+base64
+------
+Unmodified, free to use code.
+
+cachehash
+---------
+Apache Licensed
+
+gtest
+-----
+Free to use with copyright notice and conditions listed in distribution.
+
+iptree
+------
+Apache Licensed
+
+JSON CPP
+--------
+MIT or Public Domain licensed
+
+ZMap
+----
+Apache Licensed (this folder contains headers only)

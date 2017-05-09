@@ -1,29 +1,23 @@
-# Compiled Object files
-*.slo
-*.lo
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+*.rdb
+*.pyc
+*.dSYM
+*.swp
+.DS_Store
+Makefile
+zdb
+zdb-test
+*.make
+build/*
+obj/*
+dist/*
+*.xcworkspace
+*.xcodeproj
+*.mmdb
+libgtest_main.a
+libgtest.a
+libcachehash.a
+libiptree.a
+browse.VC.db
+zsearch_definitions/*
+.vscode

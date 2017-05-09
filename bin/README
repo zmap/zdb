@@ -1,0 +1,8 @@
+Precompiled vendored binaries to link against. Place in correct folder for
+architecture.
+
+Binaries
+--------
+
+This contains the libzmaplib.a binary from https://github.com/zmap/zmap, which
+is Apache licensed.

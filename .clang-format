@@ -1,0 +1,28 @@
+---
+Language:        Cpp
+BasedOnStyle: Chromium
+AccessModifierOffset: -2
+BraceWrapping:   
+  AfterClass:      false
+  AfterControlStatement: false
+  AfterEnum:       false
+  AfterFunction:   false
+  AfterNamespace:  false
+  AfterStruct:     false
+  AfterUnion:      false
+  BeforeCatch:     false
+  BeforeElse:      false
+  IndentBraces:    false
+BreakStringLiterals: false
+ColumnLimit:     80
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 8
+ContinuationIndentWidth: 8
+Cpp11BracedListStyle: true
+IndentCaseLabels: true
+IndentWidth:     4
+SpaceAfterCStyleCast: true
+TabWidth:        8
+UseTab:          Never
+...
+

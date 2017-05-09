@@ -1,11 +1,4 @@
-ZDB is Licensed under the Apaache License and copyright belongs to Regents of
-the University of Michigan. This repository contains some code and binaries
-written by other people in the bin/, tools/, and vendor/ directories. Licenses
-and copyrights for non-ZDB code are reproduced in their respective locations.
-
------
-
-                                 Apache License
+Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
 
@@ -193,7 +186,7 @@ and copyrights for non-ZDB code are reproduced in their respective locations.
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2017 Regents of the University of Michigan
+   IPTree Copyright 2017 Regents of the University of Michigan
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
