@@ -1,0 +1,27 @@
+language: c
+os: osx
+before_install:
+  - brew tap zmap/homebrew-formula
+  - brew update
+  - brew install gflags libmaxminddb 
+  - brew install openssl zmap/formula/grpc@1.2 zmap/formula/protobuf@3.2 || true
+  - brew install zmap/formula/judy || true
+  - brew install snappy lz4 zmap/formula/rocksdb@3.10 || true
+  - brew install librdkafka --HEAD
+before_script:
+  - ulimit -n 8192
+script: 
+  - tools/osx/premake5 gmake
+  - make
+  - ./zdb-test
+compiler: clang
+cache:
+  directories:
+    - $HOME/Library/Caches/Homebrew
+    - /usr/local/Cellar/judy/1.0.5
+    - /usr/local/Cellar/protobuf@3.2/3.2.0_2
+    - /usr/local/Cellar/grpc@1.2/1.2.5_2
+    - /usr/local/Cellar/rocksdb@3.10/3.10.2_1
+notifications:
+  email:
+  - zmap-devel@umich.edu

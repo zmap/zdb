@@ -36,6 +36,8 @@ rocksdb::DB* open_rocks(const rocksdb::Options& opt, const std::string& path) {
     auto status = rocksdb::DB::Open(opt, path, &db);
     if (!status.ok()) {
         log_error("rocksdb", "could not open %s", path.c_str());
+	std::string error_message = status.ToString();
+	log_error("rocksdb", "%s", error_message.c_str());
         return nullptr;
     }
     return db;
