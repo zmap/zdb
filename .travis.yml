@@ -6,7 +6,7 @@ before_install:
   - brew install gflags libmaxminddb 
   - brew install openssl zmap/formula/grpc@1.2 zmap/formula/protobuf@3.2 || true
   - brew link zmap/formula/grpc@1.2 || true
-  - brew link zmap/formula/protobuf@1.2 || true
+  - brew link zmap/formula/protobuf@3.2 || true
   - brew install zmap/formula/judy || true
   - brew link zmap/formula/judy || true
   - brew install snappy lz4 zmap/formula/rocksdb@3.10 || true
