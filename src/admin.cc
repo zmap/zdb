@@ -19,35 +19,34 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <list>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
-#include <memory>
-#include <vector>
-#include <list>
 #include <utility>
+#include <vector>
 
 #include <arpa/inet.h>
 
 #include <base64/base64.h>
 
-#include <grpc/grpc.h>
+#include <grpc++/security/server_credentials.h>
 #include <grpc++/server.h>
 #include <grpc++/server_builder.h>
 #include <grpc++/server_context.h>
-#include <grpc++/security/server_credentials.h>
+#include <grpc/grpc.h>
 
 #include <json/json.h>
 
-#include <stdio.h>
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
-#include <openssl/asn1.h>
-#include <openssl/x509_vfy.h>
 #include <openssl/pem.h>
-#include <openssl/bio.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
+#include <openssl/x509v3.h>
+#include <stdio.h>
 
 #include <zmap/logger.h>
 
@@ -55,14 +54,13 @@
 #include "as_data.h"
 #include "certificates.h"
 #include "configuration.h"
-#include "record.h"
-#include "utility.h"
-#include "record.h"
-#include "zmap/logger.h"
-#include "search.grpc.pb.h"
-#include "store.h"
 #include "inbound.h"
 #include "protocol_names.h"
+#include "record.h"
+#include "search.grpc.pb.h"
+#include "store.h"
+#include "utility.h"
+#include "zmap/logger.h"
 
 #include "fastjson.h"
 
@@ -986,8 +984,13 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             const Command* request,
             CommandReply* response) override {
         log_info("admin", "starting delta regeneration for certificates");
-        uint64_t count =
-                cert_store.regenerate_deltas(*certificate_prune_handler);
+        size_t max_records = request->max_records();
+        if (max_records) {
+            log_info("admin", "will only regenerate max %llu certificates",
+                     max_records);
+        }
+        uint64_t count = cert_store.regenerate_deltas(
+                *certificate_prune_handler, max_records);
         log_info("admin", "generated %llu deltas", count);
         return grpc::Status::OK;
     }
@@ -1017,8 +1020,13 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             CommandReply* response) override {
         log_info("admin",
                  "starting to queue all certificates for reprocessing");
+        size_t max_records = request->max_records();
+        if (max_records) {
+            log_info("admin", "will only reprocess max %llu certificates",
+                     max_records);
+        }
         uint64_t count = cert_store.regenerate_deltas(
-                *certificates_to_process_prune_handler);
+                *certificates_to_process_prune_handler, max_records);
         log_info("admin", "generated %llu deltas", count);
         return grpc::Status::OK;
     }

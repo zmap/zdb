@@ -156,7 +156,7 @@ class AnonymousStore {
     inline iterator begin() const { return iterator(m_db->begin()); }
     inline iterator end() const { return iterator(m_db->end()); }
 
-    uint64_t regenerate_deltas(PruneHandler& handler);
+    uint64_t regenerate_deltas(PruneHandler& handler, size_t max_records);
 
   private:
     AnonymousResult do_put_locked(const key_type& k,
@@ -537,9 +537,12 @@ AnonymousResult AnonymousStore<key_type>::do_put_locked(
 }
 
 template <typename key_type>
-uint64_t AnonymousStore<key_type>::regenerate_deltas(PruneHandler& handler) {
+uint64_t AnonymousStore<key_type>::regenerate_deltas(PruneHandler& handler, size_t max_records) {
     uint64_t count = 0;
     for (auto it = begin(); it.valid(); ++it, ++count) {
+        if (max_records && count >= max_records) {
+            break;
+        }
         if (count > 0 && count % 100000 == 0) {
             log_info("store", "regenerated %llu deltas so far", count);
         }
