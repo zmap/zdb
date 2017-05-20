@@ -1,31 +1,33 @@
 language: c
 os: osx
 before_install:
-  - brew tap zmap/homebrew-formula
-  - brew update
-  - brew install gflags libmaxminddb 
-  - brew install openssl zmap/formula/grpc@1.2 zmap/formula/protobuf@3.2 || true
-  - brew link zmap/formula/grpc@1.2 || true
-  - brew link zmap/formula/protobuf@3.2 || true
-  - brew install zmap/formula/judy || true
-  - brew link zmap/formula/judy || true
-  - brew install snappy lz4 zmap/formula/rocksdb@3.10 || true
-  - brew link zmap/formula/rocksdb@3.10 || true
-  - brew install librdkafka --HEAD
+- brew tap zmap/homebrew-formula
+- brew update
+- brew install gflags libmaxminddb
+- brew install openssl zmap/formula/grpc@1.2 zmap/formula/protobuf@3.2 || true
+- brew link zmap/formula/grpc@1.2 || true
+- brew link zmap/formula/protobuf@3.2 || true
+- brew install zmap/formula/judy || true
+- brew link zmap/formula/judy || true
+- brew install snappy lz4 zmap/formula/rocksdb@3.10 || true
+- brew link zmap/formula/rocksdb@3.10 || true
+- brew install librdkafka --HEAD
 before_script:
-  - ulimit -n 8192
-script: 
-  - tools/osx/premake5 gmake
-  - make
-  - ./zdb-test
+- ulimit -n 8192
+script:
+- tools/osx/premake5 gmake
+- make
+- "./zdb-test"
 compiler: clang
 cache:
   directories:
-    - $HOME/Library/Caches/Homebrew
-    - /usr/local/Cellar/judy/1.0.5
-    - /usr/local/Cellar/protobuf@3.2/3.2.0_2
-    - /usr/local/Cellar/grpc@1.2/1.2.5_2
-    - /usr/local/Cellar/rocksdb@3.10/3.10.2_1
+  - "$HOME/Library/Caches/Homebrew"
+  - "/usr/local/Cellar/judy/1.0.5"
+  - "/usr/local/Cellar/protobuf@3.2/3.2.0_2"
+  - "/usr/local/Cellar/grpc@1.2/1.2.5_2"
+  - "/usr/local/Cellar/rocksdb@3.10/3.10.2_1"
 notifications:
   email:
   - zmap-devel@umich.edu
+  slack:
+    secure: Uud7HzeTdCrwqs1CM8QFcb9rRtsSktAkYLaiXESNUBkMtDm5VtvTkjNCMt/R0i2UQUMXP1MG0PxNMX25MUdRnKMCwhAJOU8Uv7yuokZuFVnZ/p2JSH40R/z7RnAqmOxERBtimXKV4y2ep9cqDixHBkW4j7MpxLdXDOWagJ4BHjd6V4ofeZzmbHeehh/vxuPh2vMbkbPb/3poynoy3+S4kZlnSxPimk64d/elDv9e7AXL0ebWMw5YS2GQ0UD/GpYLhSNGw3SLJ+YKPjUU6Iq8MR0SijXUdOQc5stZe+lppDJ325DchG0I+RU8AmuZAmdcMjoHqqOpNpYDix2r8NqhIDNdXJXfdGpNNu7SKP+DVJh3imqS1V8lqoXiL+7X37hE6N0iDilAZOtiIZHkb6d3Mi3aujSKofow0LBS9e1SlCzSgOTonmhkkOBPgGRRH62iVtnIcdHznrVhIdxESJ6JZRpD0ReHGVL6ODv6/7uGqincCkP+NH23oQiIuhYjccyrT+9nvdX57NbFIX+dKNsHufcPeB1rP2UhXVyWDRWDHPYcuQBbB6avrvD+1czLbWkuCYqTBoDmm5yp/aRvRKRzbcuTLQvA/UGo7ELkybiiJQxcrZCoUiywyUrXXzxoyl3ZlVoyIlqDYIkzOTi+Kzh7mP092sA7pLIy2U6StSBTIsc=
