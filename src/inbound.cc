@@ -154,6 +154,11 @@ class ProcessedCertificateHandler : public InboundHandler {
                     hex.c_str());
             return InboundResult{false, ""};
         }
+        if (certificate.sha256fp().empty()) {
+            auto hex = hex_encode(certificate.raw());
+            log_error("processed_cert handler", "certificate had empty sha256fp: %s", hex.c_str());
+            return InboundResult{true, ""};
+	}
         AnonymousResult res = m_store.put_processed_cert(certificate);
         if (!res.success) {
             return InboundResult{false, ""};
