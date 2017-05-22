@@ -330,7 +330,8 @@ std::unique_ptr<DBContext> create_db_context_from_config_values(
     }
     if (config_values.certificate.should_open() ||
         config_values.external_certificate.should_open() ||
-        config_values.sct.should_open()) {
+        config_values.sct.should_open() || 
+        config_values.processed_cert.should_open()) {
         log_info("context", "creating certificate context");
         certificate.reset(new RocksShardedContext(
                 config_values.certificate.db_path, kCertificateShardCount));
