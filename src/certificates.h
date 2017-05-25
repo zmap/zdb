@@ -20,14 +20,13 @@
 #include <set>
 #include <string>
 
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
-#include <openssl/asn1.h>
-#include <openssl/x509_vfy.h>
 #include <openssl/pem.h>
-#include <openssl/bio.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
+#include <openssl/x509v3.h>
 
 #include "zsearch_definitions/search.pb.h"
 
@@ -64,6 +63,8 @@ struct CAStore {
 };
 
 bool valid_parent(X509* parent, X509* child);
+
+bool certificate_valid_at(const zsearch::Certificate& cert, std::time_t now);
 
 X509* certificate_to_x509(const zsearch::Certificate& cert);
 
