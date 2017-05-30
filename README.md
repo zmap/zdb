@@ -9,10 +9,14 @@ On OS X:
 
 ```
 $ git submodule update --init
-$ brew tap grpc/grpc
-$ brew uninstall protobuf
-$ brew install grpc/grpc/grpc Judy rocksdb gflags python libmaxminddb
-$ brew install librdkafka --HEAD
+$ brew tap zmap/homebrew-formula
+$ brew update
+$ brew uninstall google-protobuf protobuf grpc grpc/grpc/grpc
+$ brew install gflags libmaxminddb
+$ brew install openssl zmap/formula/grpc@1.2 zmap/formula/protobuf@3.2
+$ brew install zmap/formula/judy
+$ brew install snappy lz4 zmap/formula/rocksdb@3.10
+$ brew install librdkafka
 $ tools/osx/premake5 gmake
 $ make
 ```
