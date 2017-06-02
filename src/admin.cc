@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -38,15 +39,6 @@
 #include <grpc/grpc.h>
 
 #include <json/json.h>
-
-#include <openssl/asn1.h>
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
-#include <openssl/x509_vfy.h>
-#include <openssl/x509v3.h>
-#include <stdio.h>
 
 #include <zmap/logger.h>
 
@@ -89,7 +81,6 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
     AnonymousStore<HashKey> cert_store;
 
     DeltaContext* m_delta_ctx;
-    CAStore ca_store;
 
     ASTree* m_as_tree;
 
@@ -298,96 +289,6 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             log_error("admin", "AS update failed");
         }
         return grpc::Status::OK;
-    }
-
-    bool doesLinkUpToRoot(std::shared_ptr<cert_data> cert,
-                          std::unordered_set<string>& seen_before,
-                          bool restrict_to_now) {
-        const auto& issuer = cert->subject_issuer.issuer;
-        if (cert->is_valid) {
-            return true;
-        } else if (cert->subject_issuer.self_signed) {
-            return false;
-        } else if (seen_before.count(issuer)) {
-            return false;
-        }
-        auto parents_it = ca_store.by_subject.find(cert->subject_issuer.issuer);
-        if (parents_it != ca_store.by_subject.end()) {
-            for (auto& parent : parents_it->second) {
-                // if we're populating currently_valid, then check that a
-                // potential parent is valid today.
-                if (restrict_to_now &&
-                    !x509_check_time_valid_now(parent->X509_cert.get())) {
-                    continue;
-                }
-                seen_before.insert(issuer);
-                if (valid_parent(parent->X509_cert.get(),
-                                 cert->X509_cert.get())) {
-                    if (doesLinkUpToRoot(parent, seen_before,
-                                         restrict_to_now)) {
-                        parent->is_valid = true;
-                        return true;
-                    }
-                }
-                seen_before.erase(issuer);
-            }
-        }
-        return false;
-    }
-
-    std::set<string> find_parents(const CertificateSubjectIssuer& child,
-                                  X509* c) {
-        // Check if we have anything for this issuer
-        auto parent_it = ca_store.by_subject.find(child.issuer);
-        if (parent_it == ca_store.by_subject.end()) {
-            return std::set<string>();
-        }
-        std::set<string> ret;
-        // Check each parent
-        for (const auto& parent : parent_it->second) {
-            if (valid_parent(parent->X509_cert.get(), c)) {
-                ret.insert(parent->subject_issuer.fingerprint_sha256);
-            }
-        }
-        return ret;
-    }
-
-    bool find_valid_chain(const CertificateSubjectIssuer& cert,
-                          X509* c,
-                          cert_data* entry,
-                          bool restrict_to_now) {
-        // Iterate over valid parents to see if any link up to root
-        // If they do then set the writeback flag
-        if (restrict_to_now && !x509_check_time_valid_now(c)) {
-            return false;
-        }
-        auto& parents = ca_store.by_subject[cert.issuer];
-        std::unordered_set<std::string> seen_before;
-        seen_before.insert(cert.subject);
-        for (auto& parent : parents) {
-            if (!valid_parent(parent->X509_cert.get(), c)) {
-                continue;
-            }
-            if (restrict_to_now &&
-                !x509_check_time_valid_now(parent->X509_cert.get())) {
-                continue;
-            }
-            seen_before.insert(cert.issuer);
-            if (parent->is_valid ||
-                doesLinkUpToRoot(parent, seen_before, restrict_to_now)) {
-                // We have a valid cert!
-
-                // If this certificate is one of the signers we found in the
-                // first pass, and is valid, we can short circuit the validation
-                // next time.
-                if (entry != nullptr) {
-                    entry->is_valid = true;
-                }
-                return true;
-            }
-            seen_before.erase(cert.issuer);
-        }
-        return false;
     }
 
     virtual grpc::Status ValidateCertificates(ServerContext* context,
