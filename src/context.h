@@ -22,6 +22,7 @@
 
 #include "configuration.h"
 #include "db.h"
+#include "delta_handler.h"
 #include "record.h"
 #include "sharded_db.h"
 #include "zdb.h"
@@ -277,6 +278,23 @@ class KafkaContext : public Context {
     std::string m_brokers;
 
     DISALLOW_COPY_ASSIGN(KafkaContext);
+};
+
+class DeltaContext : public Context {
+public:
+
+    DeltaContext(KafkaContext* kafka_ctx);
+    virtual ~DeltaContext() = default;
+
+    std::unique_ptr<DeltaHandler> new_ipv4_delta_handler();
+    std::unique_ptr<DeltaHandler> new_domain_delta_handler();
+    std::unique_ptr<DeltaHandler> new_certificate_delta_handler();
+    std::unique_ptr<DeltaHandler> new_certificates_to_process_delta_handler();
+private:
+
+    KafkaContext* m_kafka_ctx;
+
+    DISALLOW_COPY_ASSIGN(DeltaContext);
 };
 
 std::unique_ptr<DBContext> create_db_context_from_config_values(

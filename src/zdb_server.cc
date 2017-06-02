@@ -145,9 +145,12 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<KafkaContext> kafka_ctx =
             create_kafka_context_from_config_values(FLAGS_kafka_brokers,
                                                     config_values);
+
     if (!kafka_ctx) {
         log_fatal("server", "unable to create kakfa connections");
     }
+
+    DeltaContext delta_ctx(kafka_ctx.get());
 
     log_info("server", "registering signal handlers");
     if (signal(SIGINT, sig_handler) == SIG_ERR) {
@@ -175,7 +178,7 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<QueryServer> query_server =
             make_query_server(FLAGS_query_port, store_ctx.get());
     std::shared_ptr<AdminServer> admin_server = make_admin_server(
-            FLAGS_admin_port, store_ctx.get(), kafka_ctx.get());
+            FLAGS_admin_port, store_ctx.get(), &delta_ctx);
     log_info("server", "launching admin thread bound to port %d",
              FLAGS_admin_port);
     std::thread admin_thread(

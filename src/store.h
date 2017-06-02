@@ -18,20 +18,21 @@
 #include <algorithm>
 #include <atomic>
 #include <functional>
+#include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
-#include <limits>
 #include <string>
 #include <thread>
 #include <vector>
-#include <iostream>
 
 #include <arpa/inet.h>
 
 #include "as_data.h"
 #include "channel.h"
 #include "db.h"
+#include "delta_handler.h"
 #include "fastjson.h"
 #include "location.h"
 #include "macros.h"
@@ -39,8 +40,8 @@
 #include "record_lock.h"
 #include "utility.h"
 #include "zmap/logger.h"
-#include "zsearch_definitions/search.pb.h"
 #include "zsearch_definitions/protocols.pb.h"
+#include "zsearch_definitions/search.pb.h"
 
 namespace std {
 
@@ -180,7 +181,7 @@ struct DumpConfiguration {
     size_t max_records;
 
     min_scan_map min_scan_ids;
-    std::vector<std::shared_ptr<PruneHandler>> prune_handlers;
+    std::vector<std::unique_ptr<DeltaHandler>> prune_handlers;
 };
 
 class DumpStatistics {
@@ -193,16 +194,6 @@ class DumpStatistics {
     DumpStatistics() : success(false), records_dumped(0), hosts_dumped(0) {}
     DumpStatistics(const DumpStatistics&) = default;
     DumpStatistics(DumpStatistics&&) = default;
-};
-
-struct PruneDumpConfiguration {
-    PruneConfiguration prune;
-    DumpConfiguration dump;
-};
-
-struct PruneDumpStatistics {
-    PruneStatistics prune;
-    DumpStatistics dump;
 };
 
 template <typename key_type>
@@ -399,15 +390,15 @@ class Store {
     using min_scan_map = PruneConfiguration::min_scan_map;
 
     PruneStatistics prune(const min_scan_map& min_scan_ids,
-                          PruneHandler& handler);
+                          DeltaHandler& handler);
     DumpStatistics dump_to_json(std::ostream& output_file,
-                                DumpConfiguration dump_config);
+                                const DumpConfiguration& dump_config);
     uint64_t regenerate_deltas(key_type start,
                                key_type stop,
-                               PruneHandler& handler);
+                               DeltaHandler& handler);
     ReturnStatus update_locations(key_type start,
                                   key_type stop,
-                                  PruneHandler& handler);
+                                  DeltaHandler& handler);
 
   private:
     static PruneCheck should_prune(const zsearch::Record& record,
@@ -674,7 +665,7 @@ StoreResult Store<key_type>::host_delta(const key_type& k) const {
 
 template <typename key_type>
 PruneStatistics Store<key_type>::prune(const min_scan_map& min_scan_ids,
-                                       PruneHandler& handler) {
+                                       DeltaHandler& handler) {
     PruneStatistics stats;
     for (auto it = m_db->begin(); it.valid(); ++it) {
         ++stats.records_read;
@@ -703,7 +694,7 @@ PruneStatistics Store<key_type>::prune(const min_scan_map& min_scan_ids,
         uint32_t current_scan_id = current_record.scanid();
         if (current_scan_id < min_it->second) {
             StoreResult result = del(current_key);
-            handler.handle_pruned(result);
+            handler.handle_delta(result);
             ++stats.records_pruned;
             stats.pruned_per_key[current_anon_key] += 1;
         }
@@ -713,12 +704,10 @@ PruneStatistics Store<key_type>::prune(const min_scan_map& min_scan_ids,
 }
 
 template <typename key_type>
-DumpStatistics Store<key_type>::dump_to_json(std::ostream& output_file,
-                                             DumpConfiguration dump_config) {
+DumpStatistics Store<key_type>::dump_to_json(
+        std::ostream& output_file,
+        const DumpConfiguration& dump_config) {
     DumpStatistics stats;
-    if (dump_config.max_records == 0) {
-        dump_config.max_records = std::numeric_limits<size_t>::max();
-    }
 
     if (dump_config.prune_handlers.empty()) {
         log_error("store", "could not dump, no handlers specified");
@@ -802,7 +791,7 @@ DumpStatistics Store<key_type>::dump_to_json(std::ostream& output_file,
                                         auto delta = this->del(
                                                 key_type::from_record(record));
                                         dump_config.prune_handlers[thread_id]
-                                                ->handle_pruned(delta);
+                                                ->handle_delta(delta);
                                         ++prune_stats.records_pruned;
                                         prune_stats
                                                 .pruned_per_key[pc.anon_key] +=
@@ -869,7 +858,7 @@ DumpStatistics Store<key_type>::dump_to_json(std::ostream& output_file,
                                             &as_res.as_atom);
                                     auto delta = this->put(as_record);
                                     dump_config.prune_handlers[thread_id]
-                                            ->handle_pruned(delta);
+                                            ->handle_delta(delta);
                                     records.emplace_back();
                                     records.back().Swap(&as_record);
                                 }
@@ -892,7 +881,8 @@ DumpStatistics Store<key_type>::dump_to_json(std::ostream& output_file,
     std::vector<std::string> working_records;
     auto working_key = it->first.zero_subkey();
     for (; it.valid(); ++it) {
-        if (stats.records_dumped >= dump_config.max_records) {
+        if (dump_config.max_records &&
+            stats.records_dumped >= dump_config.max_records) {
             break;
         }
         const auto current_key = it->first.zero_subkey();
@@ -932,7 +922,7 @@ DumpStatistics Store<key_type>::dump_to_json(std::ostream& output_file,
 template <typename key_type>
 uint64_t Store<key_type>::regenerate_deltas(key_type start,
                                             key_type stop,
-                                            PruneHandler& handler) {
+                                            DeltaHandler& handler) {
     uint64_t count = 0;
     for (auto it = host_upper_bound(start); it.valid(); ++it) {
         if (count > 0 && count % 100000 == 0) {
@@ -960,7 +950,7 @@ uint64_t Store<key_type>::regenerate_deltas(key_type start,
                       });
         delta.set_version(max_version);
         delta.set_delta_type(zsearch::DeltaType::DT_UPDATE);
-        handler.handle_pruned(sr);
+        handler.handle_delta(sr);
         count += 1;
     }
     return count;
@@ -969,7 +959,7 @@ uint64_t Store<key_type>::regenerate_deltas(key_type start,
 template <typename key_type>
 ReturnStatus Store<key_type>::update_locations(key_type start,
                                                key_type stop,
-                                               PruneHandler& handler) {
+                                               DeltaHandler& handler) {
     uint64_t count = 0;
     for (auto it = host_upper_bound(start); it.valid(); ++it) {
         if (count > 0 && count % 100000 == 0) {
@@ -1041,7 +1031,7 @@ ReturnStatus Store<key_type>::update_locations(key_type start,
 // XXX: Ignore deltas
 #if 0
         if (!deltas.empty()) {
-            handler.handle_pruned(deltas.back());
+            handler.handle_delta(deltas.back());
         }
 #endif
     }

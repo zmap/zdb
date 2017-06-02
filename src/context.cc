@@ -24,6 +24,9 @@
 
 #include <zmap/logger.h>
 
+#include "delta_handler.h"
+#include "grouping_delta_handler.h"
+#include "kafka_topic_delta_handler.h"
 #include "rocks_util.h"
 #include "util/file.h"
 
@@ -36,8 +39,8 @@ rocksdb::DB* open_rocks(const rocksdb::Options& opt, const std::string& path) {
     auto status = rocksdb::DB::Open(opt, path, &db);
     if (!status.ok()) {
         log_error("rocksdb", "could not open %s", path.c_str());
-	std::string error_message = status.ToString();
-	log_error("rocksdb", "%s", error_message.c_str());
+        std::string error_message = status.ToString();
+        log_error("rocksdb", "%s", error_message.c_str());
         return nullptr;
     }
     return db;
@@ -290,17 +293,53 @@ void KafkaContext::connect_enabled(const EnableMap& enabled) {
                                          kExternalCertificateInboundName);
     m_sct = connect_inbound_if(enabled.sct, m_brokers, kSCTInboundName);
     m_processed_cert = connect_inbound_if(enabled.processed_cert, m_brokers,
-			kProcessedCertificateInboundName);
+                                          kProcessedCertificateInboundName);
 
     m_ipv4_deltas = connect_outbound_if(!!m_ipv4, m_brokers, kIPv4OutboundName);
     m_domain_deltas =
             connect_outbound_if(!!m_domain, m_brokers, kDomainOutboundName);
     m_certificates_to_process =
-            connect_outbound_if(!!m_certificate || !!m_external_cert,
-                                m_brokers, kCertificateOutboundName);
-    m_certificate_deltas = connect_outbound_if(
-            !!m_certificate || !!m_external_cert || !!m_sct || !!m_processed_cert,
-            m_brokers, kProcessedCertificateOutboundName);
+            connect_outbound_if(!!m_certificate || !!m_external_cert, m_brokers,
+                                kCertificateOutboundName);
+    m_certificate_deltas =
+            connect_outbound_if(!!m_certificate || !!m_external_cert ||
+                                        !!m_sct || !!m_processed_cert,
+                                m_brokers, kProcessedCertificateOutboundName);
+}
+
+DeltaContext::DeltaContext(KafkaContext* kafka_ctx) : m_kafka_ctx(kafka_ctx) {}
+
+std::unique_ptr<DeltaHandler> DeltaContext::new_ipv4_delta_handler() {
+    std::unique_ptr<DeltaHandler> kafka_handler(new KafkaTopicDeltaHandler(
+            m_kafka_ctx->ipv4_deltas()));
+    std::unique_ptr<DeltaHandler> handler(
+            new GroupingDeltaHandler(GroupingDeltaHandler::GROUP_IP));
+    GroupingDeltaHandler* grouping_handler =
+            reinterpret_cast<GroupingDeltaHandler*>(handler.get());
+    grouping_handler->set_underlying_handler(std::move(kafka_handler));
+    return handler;
+}
+
+std::unique_ptr<DeltaHandler> DeltaContext::new_domain_delta_handler() {
+    std::unique_ptr<DeltaHandler> kafka_handler(new KafkaTopicDeltaHandler(
+            m_kafka_ctx->domain_deltas()));
+    std::unique_ptr<DeltaHandler> handler(
+            new GroupingDeltaHandler(GroupingDeltaHandler::GROUP_DOMAIN));
+    GroupingDeltaHandler* grouping_handler =
+            reinterpret_cast<GroupingDeltaHandler*>(handler.get());
+    grouping_handler->set_underlying_handler(std::move(kafka_handler));
+    return handler;
+}
+
+std::unique_ptr<DeltaHandler> DeltaContext::new_certificate_delta_handler() {
+    return std::unique_ptr<DeltaHandler>(
+            new KafkaTopicDeltaHandler(m_kafka_ctx->certificate_deltas()));
+}
+
+std::unique_ptr<DeltaHandler>
+DeltaContext::new_certificates_to_process_delta_handler() {
+    return std::unique_ptr<DeltaHandler>(
+            new KafkaTopicDeltaHandler(m_kafka_ctx->certificates_to_process()));
 }
 
 std::unique_ptr<DBContext> create_db_context_from_config_values(
@@ -330,7 +369,7 @@ std::unique_ptr<DBContext> create_db_context_from_config_values(
     }
     if (config_values.certificate.should_open() ||
         config_values.external_certificate.should_open() ||
-        config_values.sct.should_open() || 
+        config_values.sct.should_open() ||
         config_values.processed_cert.should_open()) {
         log_info("context", "creating certificate context");
         certificate.reset(new RocksShardedContext(

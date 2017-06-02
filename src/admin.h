@@ -41,6 +41,6 @@ struct AdminServer {
 
 std::unique_ptr<AdminServer> make_admin_server(uint16_t port,
                                                StoreContext* store_ctx,
-                                               KafkaContext* kafka_ctx);
+                                               DeltaContext* delta_ctx);
 
 }  // namespace zdb

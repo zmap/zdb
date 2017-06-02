@@ -54,7 +54,10 @@
 #include "as_data.h"
 #include "certificates.h"
 #include "configuration.h"
+#include "delta_handler.h"
+#include "grouping_delta_handler.h"
 #include "inbound.h"
+#include "kafka_topic_delta_handler.h"
 #include "protocol_names.h"
 #include "record.h"
 #include "search.grpc.pb.h"
@@ -85,10 +88,7 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
     Store<DomainKey> domain_store;
     AnonymousStore<HashKey> cert_store;
 
-    std::shared_ptr<PruneHandler> certificate_prune_handler;
-    std::shared_ptr<PruneHandler> certificates_to_process_prune_handler;
-    std::vector<std::shared_ptr<PruneHandler>> ipv4_prune_handler;
-    std::vector<std::shared_ptr<PruneHandler>> domain_prune_handler;
+    DeltaContext* m_delta_ctx;
     CAStore ca_store;
 
     ASTree* m_as_tree;
@@ -98,7 +98,7 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             const Command* request,
             CommandReply* response,
             store_type& store,
-            std::vector<std::shared_ptr<PruneHandler>> prune_handlers) {
+            std::vector<std::unique_ptr<DeltaHandler>> prune_handlers) {
         log_info("admin", "dumping to file %s", request->filepath().c_str());
         std::ofstream f(request->filepath());
         if (!f) {
@@ -199,20 +199,13 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
     AdminServiceImpl(Store<IPv4Key>&& ipv4,
                      Store<DomainKey>&& domain,
                      AnonymousStore<HashKey>&& cert,
-                     std::vector<std::shared_ptr<PruneHandler>> ipv4_prune,
-                     std::vector<std::shared_ptr<PruneHandler>> domain_prune,
-                     std::shared_ptr<PruneHandler> certificate_prune,
-                     std::shared_ptr<PruneHandler> certificate_process_prune,
+                     DeltaContext* delta_ctx,
                      ASTree* as_tree)
             : zsearch::AdminService::Service(),
               ipv4_store(std::move(ipv4)),
               domain_store(std::move(domain)),
               cert_store(std::move(cert)),
-              ipv4_prune_handler(std::move(ipv4_prune)),
-              domain_prune_handler(std::move(domain_prune)),
-              certificate_prune_handler(std::move(certificate_prune)),
-              certificates_to_process_prune_handler(
-                      std::move(certificate_process_prune)),
+              m_delta_ctx(delta_ctx),
               m_as_tree(as_tree) {}
 
     virtual grpc::Status Status(ServerContext* context,
@@ -266,8 +259,9 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             return grpc::Status::OK;
         }
 
-        if (ipv4_store.update_locations(start, stop,
-                                        *ipv4_prune_handler.front()) !=
+        std::unique_ptr<DeltaHandler> ipv4_prune_handler =
+                m_delta_ctx->new_ipv4_delta_handler();
+        if (ipv4_store.update_locations(start, stop, *ipv4_prune_handler) !=
             RETURN_SUCCESS) {
             log_info("admin", "locations job failed");
             response->set_status(CommandReply::ERROR);
@@ -460,7 +454,13 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             response->set_error(kErrorMsgUnopened);
             return grpc::Status::OK;
         }
-        auto status = dump(request, response, ipv4_store, ipv4_prune_handler);
+        std::vector<std::unique_ptr<DeltaHandler>> ipv4_delta_handlers;
+        for (size_t i = 0; i < 12; ++i) {
+            ipv4_delta_handlers.push_back(
+                    m_delta_ctx->new_ipv4_delta_handler());
+        }
+        auto status = dump(request, response, ipv4_store,
+                           std::move(ipv4_delta_handlers));
         log_info("admin", "finished dump of ipv4");
         return status;
     }
@@ -475,8 +475,13 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             response->set_error(kErrorMsgUnopened);
             return grpc::Status::OK;
         }
-        auto status =
-                dump(request, response, domain_store, domain_prune_handler);
+        std::vector<std::unique_ptr<DeltaHandler>> domain_delta_handlers;
+        for (size_t i = 0; i < 12; ++i) {
+            domain_delta_handlers.push_back(
+                    m_delta_ctx->new_domain_delta_handler());
+        }
+        auto status = dump(request, response, domain_store,
+                           std::move(domain_delta_handlers));
         log_info("admin", "finished dump of domain");
         return status;
     }
@@ -589,8 +594,10 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
                  stop_str.c_str());
         IPv4Key start{request->start_ip(), 0, 0, 0};
         IPv4Key stop{request->stop_ip(), 0, 0, 0};
-        uint64_t count = ipv4_store.regenerate_deltas(
-                start, stop, *ipv4_prune_handler.front());
+        std::unique_ptr<DeltaHandler> ipv4_delta_handler =
+                m_delta_ctx->new_ipv4_delta_handler();
+        uint64_t count =
+                ipv4_store.regenerate_deltas(start, stop, *ipv4_delta_handler);
         log_info("admin", "generated %llu deltas", count);
         response->set_status(CommandReply::SUCCESS);
         return grpc::Status::OK;
@@ -609,8 +616,10 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
         }
         DomainKey start("", 0, 0, 0);
         DomainKey stop("\x7F", 65535, 255, 255);
-        uint64_t count = domain_store.regenerate_deltas(
-                start, stop, *domain_prune_handler.front());
+        std::unique_ptr<DeltaHandler> domain_delta_handler =
+                m_delta_ctx->new_domain_delta_handler();
+        uint64_t count = domain_store.regenerate_deltas(start, stop,
+                                                        *domain_delta_handler);
         log_info("admin", "generated %llu deltas", count);
         response->set_status(CommandReply::SUCCESS);
         return grpc::Status::OK;
@@ -626,8 +635,10 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             log_info("admin", "will only regenerate max %llu certificates",
                      max_records);
         }
-        uint64_t count = cert_store.regenerate_deltas(
-                *certificate_prune_handler, max_records);
+        std::unique_ptr<DeltaHandler> cert_delta_handler =
+                m_delta_ctx->new_certificate_delta_handler();
+        uint64_t count =
+                cert_store.regenerate_deltas(*cert_delta_handler, max_records);
         log_info("admin", "generated %llu deltas", count);
         return grpc::Status::OK;
     }
@@ -642,7 +653,9 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
         AnonymousResult result;
         bool found = get_certificate_delta(request->sha256fp(), &result);
         if (found) {
-            certificate_prune_handler->handle_pruned(result);
+            std::unique_ptr<DeltaHandler> cert_delta_handler =
+                    m_delta_ctx->new_certificate_delta_handler();
+            cert_delta_handler->handle_delta(result);
             response->set_status(response->SUCCESS);
         } else {
             response->set_status(response->NO_RECORD);
@@ -662,8 +675,10 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             log_info("admin", "will only reprocess max %llu certificates",
                      max_records);
         }
-        uint64_t count = cert_store.regenerate_deltas(
-                *certificates_to_process_prune_handler, max_records);
+        std::unique_ptr<DeltaHandler> to_process_handler =
+                m_delta_ctx->new_certificates_to_process_delta_handler();
+        uint64_t count =
+                cert_store.regenerate_deltas(*to_process_handler, max_records);
         log_info("admin", "generated %llu deltas", count);
         return grpc::Status::OK;
     }
@@ -678,7 +693,9 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
         AnonymousResult result;
         bool found = get_certificate_delta(request->sha256fp(), &result);
         if (found) {
-            certificates_to_process_prune_handler->handle_pruned(result);
+            std::unique_ptr<DeltaHandler> to_process_handler =
+                    m_delta_ctx->new_certificates_to_process_delta_handler();
+            to_process_handler->handle_delta(result);
             response->set_status(response->SUCCESS);
         } else {
             response->set_status(response->NO_RECORD);
@@ -697,7 +714,7 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
 std::unique_ptr<zdb::AdminServer> zdb::make_admin_server(
         uint16_t port,
         StoreContext* store_ctx,
-        KafkaContext* kafka_ctx) {
+        DeltaContext* delta_ctx) {
     std::string listen =
             std::string("0.0.0.0") + std::string(":") + std::to_string(port);
     std::string server_address(listen);
@@ -707,47 +724,9 @@ std::unique_ptr<zdb::AdminServer> zdb::make_admin_server(
     Store<DomainKey> domain = store_ctx->make_domain_store(0);
     AnonymousStore<HashKey> certificate = store_ctx->make_certificate_store(0);
 
-    shared_ptr<PruneHandler> certificate_prune_handler;
-    {
-        auto raw_ptr =
-                new KafkaTopicPruneHandler(kafka_ctx->certificate_deltas());
-        certificate_prune_handler.reset(raw_ptr);
-    }
-
-    shared_ptr<PruneHandler> certificates_to_process_prune_handler;
-    {
-        auto raw_ptr = new KafkaTopicPruneHandler(
-                kafka_ctx->certificates_to_process());
-        certificates_to_process_prune_handler.reset(raw_ptr);
-    }
-
-    vector<shared_ptr<PruneHandler>> ipv4_prune_handler(12, nullptr);
-    vector<shared_ptr<PruneHandler>> domain_prune_handler(12, nullptr);
-
-    std::for_each(ipv4_prune_handler.begin(), ipv4_prune_handler.end(),
-                  [&](shared_ptr<PruneHandler>& p) {
-                      auto kafka_handler = make_shared<KafkaTopicPruneHandler>(
-                              kafka_ctx->ipv4_deltas());
-                      auto group_handler = new GroupingPruneHandler();
-                      group_handler->set_underlying_handler(kafka_handler);
-                      p.reset(group_handler);
-                  });
-
-    std::for_each(domain_prune_handler.begin(), domain_prune_handler.end(),
-                  [&](shared_ptr<PruneHandler>& p) {
-                      auto kafka_handler = make_shared<KafkaTopicPruneHandler>(
-                              kafka_ctx->domain_deltas());
-                      auto group_handler = new GroupingPruneHandler(
-                              GroupingPruneHandler::GROUP_DOMAIN);
-                      group_handler->set_underlying_handler(kafka_handler);
-                      p.reset(group_handler);
-                  });
-
     unique_ptr<AdminServiceImpl> service(new AdminServiceImpl(
             std::move(ipv4), std::move(domain), std::move(certificate),
-            std::move(ipv4_prune_handler), domain_prune_handler,
-            certificate_prune_handler, certificates_to_process_prune_handler,
-            store_ctx->as_tree()));
+            delta_ctx, store_ctx->as_tree()));
 
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(service.get());

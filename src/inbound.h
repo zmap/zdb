@@ -49,53 +49,6 @@ struct InboundOptions {
     KafkaProducerConnection* outgoing;
 };
 
-class KafkaTopicPruneHandler : public PruneHandler {
-  public:
-    KafkaTopicPruneHandler(KafkaProducerConnection*);
-    KafkaTopicPruneHandler(const KafkaTopicPruneHandler&) = default;
-    ~KafkaTopicPruneHandler();
-
-    void handle_pruned(const StoreResult& pruned) override;
-    void handle_pruned(const AnonymousResult& pruned) override;
-
-  private:
-    void handle_serialized(const std::string& s);
-
-    KafkaProducerConnection* m_kafka;
-};
-
-class GroupingPruneHandler : public PruneHandler {
-  public:
-    enum GroupOn {
-        GROUP_IP,
-        GROUP_DOMAIN,
-    };
-
-    GroupingPruneHandler();
-    GroupingPruneHandler(GroupOn group_target);
-    GroupingPruneHandler(const GroupingPruneHandler&);
-    ~GroupingPruneHandler();
-
-    void handle_pruned(const StoreResult& pruned) override;
-    void handle_pruned(const AnonymousResult& pruned) override;
-
-    void set_underlying_handler(std::shared_ptr<PruneHandler> impl) {
-        m_impl = std::move(impl);
-    }
-
-  private:
-    void do_prune();
-
-    GroupOn m_group_target = GROUP_IP;
-
-    uint32_t m_ip = 0;
-    std::string m_domain;
-
-    std::shared_ptr<PruneHandler> m_impl = nullptr;
-    bool m_have_latest = false;
-    StoreResult m_latest;
-};
-
 std::vector<InboundOptions> configure_inbound(ConfigValues* config_values,
                                               StoreContext* store_ctx,
                                               KafkaContext* kafka_ctx);

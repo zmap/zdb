@@ -25,12 +25,12 @@
 
 #include <cachehash/cachehash.h>
 
-#include "search.grpc.pb.h"
 
-#include "prune_handler.h"
+#include "delta_handler.h"
 #include "macros.h"
 #include "record.h"
 #include "zdb.h"
+#include "zsearch_definitions/search.grpc.pb.h"
 
 namespace zdb {
 
@@ -156,7 +156,7 @@ class AnonymousStore {
     inline iterator begin() const { return iterator(m_db->begin()); }
     inline iterator end() const { return iterator(m_db->end()); }
 
-    uint64_t regenerate_deltas(PruneHandler& handler, size_t max_records);
+    uint64_t regenerate_deltas(DeltaHandler& handler, size_t max_records);
 
   private:
     AnonymousResult do_put_locked(const key_type& k,
@@ -537,7 +537,7 @@ AnonymousResult AnonymousStore<key_type>::do_put_locked(
 }
 
 template <typename key_type>
-uint64_t AnonymousStore<key_type>::regenerate_deltas(PruneHandler& handler, size_t max_records) {
+uint64_t AnonymousStore<key_type>::regenerate_deltas(DeltaHandler& handler, size_t max_records) {
     uint64_t count = 0;
     for (auto it = begin(); it.valid(); ++it, ++count) {
         if (max_records && count >= max_records) {
@@ -553,7 +553,7 @@ uint64_t AnonymousStore<key_type>::regenerate_deltas(PruneHandler& handler, size
         delta.set_delta_scope(zsearch::AnonymousDelta_DeltaScope_SCOPE_UPDATE);
         delta.set_delta_type(zsearch::AnonymousDelta_DeltaType_DT_UPDATE);
         delta.mutable_record()->Swap(&rec);
-        handler.handle_pruned(ar);
+        handler.handle_delta(ar);
     }
     return count;
 }
