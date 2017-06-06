@@ -29,6 +29,8 @@ namespace zdb {
 
 bool certificate_valid_at(const zsearch::Certificate& cert, std::time_t now);
 
+void expire_status(zsearch::RootStoreStatus* expired);
+
 }  // namespace zdb
 
 #endif /* ZDB_SRC_CERTIFICATES_H */

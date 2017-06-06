@@ -392,10 +392,43 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
                                     std::mutex& out_mtx,
                                     uint32_t max_records,
                                     std::atomic<std::uint32_t>& count) {
+        std::unique_ptr<DeltaHandler> delta_handler =
+                m_delta_ctx->new_certificate_delta_handler();
+        std::unique_ptr<DeltaHandler> to_process_handler =
+                m_delta_ctx->new_certificates_to_process_delta_handler();
+        std::time_t now = std::time(nullptr);
         for (auto it = cert_store.seek_start_of_shard(shard_id);
              it.valid() && cert_store.shard_for(it->first) == shard_id; ++it) {
             if (max_records && ++count > max_records) {
                 return;
+            }
+            // Only update expiration if `not_valid_before` and
+            // `not_valid_after` are actually set.
+            if (it->second.certificate().not_valid_before() &&
+                it->second.certificate().not_valid_after()) {
+                bool expired =
+                        !certificate_valid_at(it->second.certificate(), now);
+                // Only write back if the value of expired changed.
+                if (expired != it->second.certificate().expired()) {
+                    it->second.mutable_certificate()->set_expired(expired);
+                    DeltaHandler* out = nullptr;
+                    if (expired) {
+                        // Common case: certificate is now expired. Update the
+                        // root store status, and send the certificate to the
+                        // delta queue.
+                        expire_status(it->second.mutable_certificate()
+                                              ->mutable_validation()
+                                              ->mutable_nss());
+                        out = delta_handler.get();
+                    } else {
+                        // Uncommon case: certificate is no longer expired. Send
+                        // it back to the certificate daemon.
+                        out = to_process_handler.get();
+                    }
+                    AnonymousResult res = cert_store.put(it->second);
+                    assert(out);
+                    out->handle_delta(res);
+                }
             }
             std::string serialized =
                     dump_certificate_to_json_string(it->second);
