@@ -21,3 +21,6 @@ libiptree.a
 browse.VC.db
 zsearch_definitions/*
 .vscode
+*.idea
+CMakeLists.txt
+cmake-build-debug/
