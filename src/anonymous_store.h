@@ -349,16 +349,22 @@ AnonymousResult AnonymousStore<key_type>::put_external(
     const key_type k = key_type::from_record(*rec);
     const lock_on_type lock_on = k.lock_on();
     auto deferred_unlock = m_lock.lock(lock_on);
-
     // If we've already seen this certificate from this particular CT server
     // then don't write it to disk. This is so that we don't push every
-    // intermediate certificate to disk.
+    // intermediate certificate to disk. We don't want to do this for
+    // all certificate sources (i.e., Mozilla Salesforce) because that data
+    // is mutable and we always want to write it to disk. This is OK because
+    // there aren't that many certificates in Mozilla Salesforce.
     std::string ch_str = k.string() + std::to_string(ctrm.source());
     const void* ch_key = ch_str.data();
     size_t ch_len = ch_str.size();
-    void* cached_value = cachehash_get(m_cache, ch_key, ch_len);
-    if (cached_value != nullptr) {
-        return AnonymousResult::no_change();
+    if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT ||
+        ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT_CHAIN) {
+        // begin body
+        void* cached_value = cachehash_get(m_cache, ch_key, ch_len);
+        if (cached_value != nullptr) {
+            return AnonymousResult::no_change();
+        }
     }
     // pull out the presented chain for later
     std::vector<std::string> presented_chain;
@@ -376,6 +382,13 @@ AnonymousResult AnonymousStore<key_type>::put_external(
         rec->CopyFrom(existing.pb());
         preexisting = true;
     } catch (std::out_of_range& e) {
+        // audit records from Mozilla Salesforce do not include parsed, or
+        // raw certificate. They only potentially add *additional* metadata
+        // to a certificate. if the record isn't already present in Censys
+        // then there's nothing to update and we ignore this additional data.
+        if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_MOZILLA_SALESFORCE) {
+            return AnonymousResult::no_change();
+        }
         // do nothing, we'll juse use the record that came in through the queue
     } catch (...) {
         log_error("anonstore",
@@ -405,9 +418,7 @@ AnonymousResult AnonymousStore<key_type>::put_external(
     } else if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_MOZILLA_SALESFORCE) {
         zsearch::Certificate* cert = rec->mutable_certificate();
         zsearch::CertificateAudit* audit = cert->mutable_audit();
-        zsearch::MozillaSalesForceStatus* nss = audit->mutable_mozilla();
-        nss->set_current_in(true);
-        nss->set_was_in(true);
+        audit->mutable_mozilla()->CopyFrom(ctrm.nss_status());
     } else if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_RESEARCH ||
                ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT_CHAIN ||
                ctrm.source() == zsearch::CERTIFICATE_SOURCE_RAPID7 ||
@@ -429,7 +440,6 @@ AnonymousResult AnonymousStore<key_type>::put_external(
     for (const auto &p: presented_chain) {
         delta_c->add_presented_chain(p);
     }
-
     return retv;
 }
 
