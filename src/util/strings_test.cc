@@ -106,6 +106,41 @@ INSTANTIATE_TEST_CASE_P(Strings,
                         HasSuffixTest,
                         testing::ValuesIn(kHasSuffixDotLogTests));
 
+struct HexDecodeTestData {
+    std::string input;
+    bool expected_result;
+    std::string expected_output;
+};
+
+class HexDecodeTest : public testing::Test,
+                      public testing::WithParamInterface<HexDecodeTestData> {};
+
+static const HexDecodeTestData kHexDecodeTests[] = {
+        {"", true, ""},
+        {"0", false, ""},
+        {"abf", false, ""},
+        {"fg", false, ""},
+        {"FF", true, "\xFF"},
+        {"01020304", true, "\x01\x02\x03\x04"},
+        {"a2c1615816029636903a8172775682e8bbb84c6fde8d74b6de1e198f19f95c72",
+         true,
+         "\xa2\xc1\x61\x58\x16\x02\x96\x36\x90\x3a\x81\x72\x77\x56\x82\xe8\xbb\xb8\x4c\x6f\xde\x8d\x74\xb6\xde\x1e\x19\x8f\x19\xf9\x5c\x72"},
+        {"01", true, "\x01"}};
+
+TEST_P(HexDecodeTest, Match) {
+    HexDecodeTestData test = GetParam();
+    std::string output;
+    bool result = Strings::hex_decode(test.input, &output);
+    EXPECT_EQ(test.expected_result, result);
+    if (test.expected_result) {
+        EXPECT_EQ(test.expected_output, output);
+    }
+}
+
+INSTANTIATE_TEST_CASE_P(Strings,
+                        HexDecodeTest,
+                        testing::ValuesIn(kHexDecodeTests));
+
 }  // namespace util
 
 }  // namespace zdb

@@ -71,6 +71,35 @@ std::string Strings::hex_encode(const std::string& s) {
     return ss.str();
 }
 
+// static
+bool Strings::hex_decode(const std::string& in, std::string* out) {
+    // A valid hex string must have even length.
+    if (in.size() % 2 != 0) {
+        return false;
+    }
+    // Validate input characters
+    if (std::string::npos != in.find_first_not_of("0123456789ABCDEFabcdef")) {
+        return false;
+    }
+    size_t expected_bytes = in.size() / 2;
+    out->clear();
+    out->reserve(expected_bytes);
+    for (size_t i = 0; i < expected_bytes; ++i) {
+        uint32_t b;
+        std::stringstream ss;
+        ss << std::hex << in.substr(i * 2, 2);
+        if (!ss) {
+            return false;
+        }
+        ss >> b;
+        if (!ss) {
+            return false;
+        }
+        out->push_back(static_cast<unsigned char>(b));
+    }
+    return true;
+}
+
 }  // namespace util
 
 }  // namespace zdb

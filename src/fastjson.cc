@@ -12,42 +12,27 @@
  * permissions and limitations under the License.
  */
 
-#include <fstream>
-#include <time.h>
-#include <iomanip>
+#include <base64/base64.h>
+#include <json/json.h>
+#include <cstdio>
+#include <cstring>
 #include <ctime>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/udp.h>
-#include <netinet/tcp.h>
-#include <net/ethernet.h>
-#include <netdb.h>
-#include <net/if.h>
-#include <ifaddrs.h>  // NOTE: net/if.h MUST be included BEFORE ifaddrs.h
-#include <arpa/inet.h>
-
-#include <set>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
-#include <string>
+#include <set>
 #include <sstream>
+#include <string>
 
 #include "anonymous_store.h"
-#include "utility.h"
-#include "record.h"
-#include "zmap/logger.h"
-#include "search.grpc.pb.h"
-#include "store.h"
 #include "inbound.h"
 #include "protocol_names.h"
-#include <json/json.h>
-
-#include "base64/base64.h"
+#include "record.h"
+#include "search.grpc.pb.h"
+#include "store.h"
+#include "util/strings.h"
+#include "zmap/logger.h"
 
 using namespace zdb;
 using namespace zsearch;
@@ -81,15 +66,6 @@ void make_metadata_string(std::ostream& f,
     f << "}";
 }
 
-std::string time_to_string(uint32_t rt) {
-    time_t raw = (time_t) rt;
-    std::time_t t = std::time(&raw);
-
-    char buf[1024];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&t));
-    return std::string(buf);
-}
-
 std::string translate_certificate_source(int source) {
     switch (source) {
         case 0:
@@ -119,17 +95,34 @@ std::string translate_certificate_source(int source) {
     }
 }
 
+std::string translate_certificate_type(int type) {
+    switch (type) {
+        case zsearch::CERTIFICATE_TYPE_RESERVED:
+            return "reserved";
+        case zsearch::CERTIFICATE_TYPE_UNKNOWN:
+            return "unknown";
+        case zsearch::CERTIFICATE_TYPE_LEAF:
+            return "leaf";
+        case zsearch::CERTIFICATE_TYPE_INTERMEDIATE:
+            return "intermediate";
+        case zsearch::CERTIFICATE_TYPE_ROOT:
+            return "root";
+        default:
+            return "unknown";
+    }
+}
+
 void fast_dump_ct_server(std::ostream& f, const zsearch::CTServerStatus ctss) {
     f << "{";
     if (ctss.index() > 0) {
         f << "\"index\":" << ctss.index();
-        f << ",\"added_to_ct_at\":\"" << time_to_string(ctss.ct_timestamp())
-          << "\"";
-        f << ",\"ct_to_censys_at\":\"" << time_to_string(ctss.pull_timestamp())
-          << "\"";
+        f << ",\"added_to_ct_at\":";
+        fast_dump_utc_unix_timestamp(f, ctss.ct_timestamp());
+        f << ",\"ct_to_censys_at\":";
+        fast_dump_utc_unix_timestamp(f, ctss.pull_timestamp());
         if (ctss.push_timestamp()) {
-            f << ",\"censys_to_ct_at\":\""
-              << time_to_string(ctss.push_timestamp()) << "\"";
+            f << ",\"censys_to_ct_at\":";
+            fast_dump_utc_unix_timestamp(f, ctss.push_timestamp());
         }
     }
     f << "}";
@@ -205,6 +198,93 @@ void fast_dump_ct(std::ostream& f, const zsearch::CTStatus cts) {
     f << "}";
 }
 
+void fast_dump_repeated_bytes(
+        std::ostream& f,
+        const google::protobuf::RepeatedPtrField<std::string>& sha256fps) {
+    f << "[";
+    bool first = true;
+    for (const auto& p : sha256fps) {
+        if (first) {
+            first = false;
+        } else {
+            f << ",";
+        }
+        f << "\"" << util::Strings::hex_encode(p) << "\"";
+    }
+    f << "]";
+    return;
+}
+
+void fast_dump_path(std::ostream& f, const zsearch::Path& path) {
+    return fast_dump_repeated_bytes(f, path.sha256fp());
+}
+
+void fast_dump_root_store_status(
+        std::ostream& f,
+        const zsearch::RootStoreStatus& rootStoreStatus) {
+    f << "{";
+    f << "\"valid\":" << (rootStoreStatus.valid() ? "true" : "false");
+    f << ",\"was_valid\":" << (rootStoreStatus.was_valid() ? "true" : "false");
+    f << ",\"trusted_path\":"
+      << (rootStoreStatus.trusted_path() ? "true" : "false");
+    f << ",\"had_trusted_path\":"
+      << (rootStoreStatus.had_trusted_path() ? "true" : "false");
+    f << ",\"blacklisted\":"
+      << (rootStoreStatus.blacklisted() ? "true" : "false");
+    f << ",\"whitelisted\":"
+      << (rootStoreStatus.whitelisted() ? "true" : "false");
+    f << ",\"type\":"
+      << "\"" << translate_certificate_type(rootStoreStatus.type()) << "\"";
+    if (rootStoreStatus.trusted_paths_size() > 0) {
+        f << ",\"paths\":[";
+        bool first = true;
+        for (auto& p : rootStoreStatus.trusted_paths()) {
+            if (first) {
+                first = false;
+            } else {
+                f << ",";
+            }
+            fast_dump_path(f, p);
+        }
+        f << "]";
+    }
+    f << ",\"in_revocation_set\":"
+      << (rootStoreStatus.in_revocation_set() ? "true" : "false");
+    if (rootStoreStatus.parents_size() > 0) {
+        f << ",\"parents\":";
+        fast_dump_repeated_bytes(f, rootStoreStatus.parents());
+    }
+    f << "}";
+}
+
+void fast_dump_validation(
+        std::ostream& f,
+        const zsearch::CertificateValidation& certificateValidation) {
+    f << "{";
+    f << "\"nss\":";
+    fast_dump_root_store_status(f, certificateValidation.nss());
+#if 0
+    f << ",\"microsoft\":";
+    fast_dump_root_store_status(f, certificateValidation.microsoft());
+    f << ",\"apple\":";
+    fast_dump_root_store_status(f, certificateValidation.apple());
+    f << ",\"java\":";
+    fast_dump_root_store_status(f, certificateValidation.java());
+    f << ",\"android\":";
+    fast_dump_root_store_status(f, certificateValidation.android());
+    f << ",\"google_ct_primary\":";
+    fast_dump_root_store_status(f, certificateValidation.google_ct_primary())
+#endif
+    f << "}";
+}
+
+void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time) {
+    std::time_t t = static_cast<std::time_t>(unix_time);
+    char buf[1024];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::gmtime(&t));
+    f << "\"" << buf << "\"";
+}
+
 void fast_dump_certificate(std::ostream& f,
                            std::map<std::string, std::string>& metadata,
                            std::set<std::string>& tags,
@@ -212,56 +292,35 @@ void fast_dump_certificate(std::ostream& f,
     f << "{";
     f << "\"raw\":\"" << base64_encode(certificate.raw()) << "\"";
     if (certificate.parse_status() == CERTIFICATE_PARSE_STATUS_SUCCESS ||
-            (certificate.parse_status() == CERTIFICATE_PARSE_STATUS_RESERVED
-                && certificate.parsed() != "")) {
+        (certificate.parse_status() == CERTIFICATE_PARSE_STATUS_RESERVED &&
+         certificate.parsed() != "")) {
         f << ",\"parsed\":" << certificate.parsed();
     }
     if (metadata.size() > 0) {
         f << ",\"metadata\":";
         make_metadata_string(f, metadata);
+        // TODO: Do we even use this?
     }
     if (tags.size() > 0) {
         f << ",\"tags\":";
         make_tags_string(f, tags);
+        // TODO: Duplicate esloader tags
     }
-    f << ",\"valid_nss\":" << (certificate.valid_nss() ? "true" : "false");
-    f << ",\"was_valid_nss\":"
-      << (certificate.was_valid_nss() ? "true" : "false");
-    f << ",\"current_valid_nss\":"
-      << (certificate.current_valid_nss() ? "true" : "false");
 
-    f << ",\"in_nss\":" << (certificate.in_nss() ? "true" : "false");
-    f << ",\"was_in_nss\":" << (certificate.was_in_nss() ? "true" : "false");
-    f << ",\"current_in_nss\":"
-      << (certificate.current_in_nss() ? "true" : "false");
-
-    // f << ",\"valid_apple\":" << (certificate.valid_apple() ? "true" :
-    // "false");
-    // f << ",\"valid_microsoft\":" << (certificate.valid_microsoft() ? "true" :
-    // "false");
+    if (certificate.post_process_timestamp() > 0) {
+        // Dump validation
+        f << ",\"validation\":";
+        fast_dump_validation(f, certificate.validation());
+        // Dump timestamp
+        f << ",\"post_process_timestamp\":\"";
+        fast_dump_utc_unix_timestamp(f, certificate.post_process_timestamp());
+    }
 
     if (certificate.parents_size() > 0) {
-        f << ",\"parents\":[";
-        bool first = true;
-        for (auto& p : certificate.parents()) {
-            if (first) {
-                first = false;
-            } else {
-                f << ",";
-            }
-            f << "\"" << hex_encode(p) << "\"";
-        }
-        f << "]";
+        f << ",\"parents\":";
+        fast_dump_repeated_bytes(f, certificate.parents());
     }
 
-    if (certificate.validation_timestamp() > 0) {
-        time_t raw = (time_t) certificate.validation_timestamp();
-        std::time_t t = std::time(&raw);
-        char buf[1024];
-        std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S",
-                      std::localtime(&t));
-        f << ",\"validation_timestamp\":\"" << buf << "\"";
-    }
     // calculate whether it's been seen in a scan based on whether the
     // certificate
     // originated from a scan or it has been since seen in a scan.
@@ -311,7 +370,9 @@ void dump_proto_with_timestamp(std::ostream& f,
     if (data != "{") {
         f << ", ";
     }
-    f << "\"timestamp\":\"" << time_to_string(timestamp) << "\"}";
+    f << "\"timestamp\":";
+    fast_dump_utc_unix_timestamp(f, timestamp);
+    f << "}";
 }
 
 void fast_dump_ipv4_host(std::ostream& f,

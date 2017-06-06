@@ -12,11 +12,12 @@
  * permissions and limitations under the License.
  */
 
-#include "anonymous_store.h"
-#include "utility.h"
-#include "record.h"
 #include <json/json.h>
+#include "anonymous_store.h"
+#include "record.h"
+#include "utility.h"
 
+#include "../censys-definitions/cpp/certificate.pb.h"
 #include "search.grpc.pb.h"
 
 void fast_dump_ipv4_host(std::ostream& f,
@@ -40,3 +41,19 @@ void fast_dump_certificate(std::ostream& f,
                            const zsearch::Certificate& certificate);
 
 std::string dump_certificate_to_json_string(zsearch::AnonymousRecord rec);
+
+void fast_dump_repeated_bytes(
+        std::ostream& f,
+        const google::protobuf::RepeatedPtrField<std::string>& sha256fps);
+
+void fast_dump_path(std::ostream& f, const zsearch::Path& path);
+
+void fast_dump_root_store_status(
+        std::ostream& f,
+        const zsearch::RootStoreStatus& rootStoreStatus);
+
+void fast_dump_validation(
+        std::ostream& f,
+        const zsearch::CertificateValidation& certificateValidation);
+
+void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time);

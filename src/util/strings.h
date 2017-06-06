@@ -32,8 +32,12 @@ class Strings {
     // Returns a string of random bytes. These bytes might not be printable.
     static std::string random_bytes(size_t n);
 
-    // Encodes `s` to hex
+    // Encodes `s` to hex.
     static std::string hex_encode(const std::string& s);
+
+    // Decodes `in` from hex. Stores decoded value in `out`. Returns true on
+    // success.
+    static bool hex_decode(const std::string& in, std::string* out);
 };
 
 }  // namespace util
