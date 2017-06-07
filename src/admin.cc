@@ -425,7 +425,7 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
                         // it back to the certificate daemon.
                         out = to_process_handler.get();
                     }
-                    AnonymousResult res = cert_store.put(it->second);
+                    AnonymousResult res = cert_store.force_put(it->second);
                     assert(out);
                     out->handle_delta(res);
                 }
