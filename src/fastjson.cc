@@ -312,7 +312,7 @@ void fast_dump_certificate(std::ostream& f,
         f << ",\"validation\":";
         fast_dump_validation(f, certificate.validation());
         // Dump timestamp
-        f << ",\"post_process_timestamp\":\"";
+        f << ",\"post_process_timestamp\":";
         fast_dump_utc_unix_timestamp(f, certificate.post_process_timestamp());
     }
 
