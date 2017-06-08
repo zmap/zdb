@@ -513,8 +513,9 @@ AnonymousResult AnonymousStore<key_type>::put_processed_cert(Certificate& c) {
     orig_cert->set_post_processed(c.post_processed());
     orig_cert->set_post_process_timestamp(c.post_process_timestamp());
     orig_cert->mutable_parents()->CopyFrom(c.parents());
+    orig_cert->set_expired(c.expired());
 
-    uint32_t now = (uint32_t) time(NULL);
+    uint32_t now = static_cast<uint32_t>(std::time(nullptr));
     ar.set_updated_at(now);
     return do_put_locked(k, ar);
 }
