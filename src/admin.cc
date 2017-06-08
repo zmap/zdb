@@ -477,10 +477,12 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             response->set_error("could not open output file");
             return grpc::Status::OK;
         }
-        uint32_t num_threads = 4;
+        uint32_t num_threads = 12;
+#if 0
         if (request->threads() != 0) {
             num_threads = request->threads();
         }
+#endif
         log_debug("admin", "will dump certificates using %u threads",
                   num_threads);
         uint32_t max_records = request->max_records();
