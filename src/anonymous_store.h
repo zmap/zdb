@@ -15,16 +15,14 @@
 #ifndef ZDB_SRC_ANONYMOUS_STORE_H
 #define ZDB_SRC_ANONYMOUS_STORE_H
 
+#include <time.h>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <utility>
-#include <string>
-#include <time.h>
-#include <iostream>
 
 #include <cachehash/cachehash.h>
-
 
 #include "delta_handler.h"
 #include "macros.h"
@@ -208,12 +206,13 @@ AnonymousResult AnonymousStore<key_type>::put(AnonymousRecord& rec) {
     if (cached_value != nullptr) {
         return AnonymousResult::no_change();
     }
-    // check if this is a certificate. if so, remove the presented chain from the
-    // protobuf so that we don't write it to disk. We'll add it back into the delta
-    // so that the certificate processing daemon has access to that context
+    // check if this is a certificate. if so, remove the presented chain from
+    // the protobuf so that we don't write it to disk. We'll add it back into
+    // the delta so that the certificate processing daemon has access to that
+    // context
     std::vector<std::string> presented_chain;
     if (rec.has_certificate()) {
-        zsearch::Certificate *c = rec.mutable_certificate();
+        zsearch::Certificate* c = rec.mutable_certificate();
         for (const auto& p : c->presented_chain()) {
             presented_chain.push_back(p);
         }
@@ -231,8 +230,8 @@ AnonymousResult AnonymousStore<key_type>::put(AnonymousRecord& rec) {
         if (pb.has_certificate() && !pb.certificate().seen_in_scan()) {
             pb.mutable_certificate()->set_seen_in_scan(true);
             auto retv = do_put_locked(k, pb);
-            auto *c = retv.delta.mutable_record()->mutable_certificate();
-            for (const auto &p: presented_chain) {
+            auto* c = retv.delta.mutable_record()->mutable_certificate();
+            for (const auto& p : presented_chain) {
                 c->add_presented_chain(p);
             }
             return retv;
@@ -259,8 +258,8 @@ AnonymousResult AnonymousStore<key_type>::put(AnonymousRecord& rec) {
     if (retv.delta.record().has_certificate()) {
         // now that record is written to disk, add presented chain back into
         // the delta so that the certificate processing daemon has access to it
-        auto *c = retv.delta.mutable_record()->mutable_certificate();
-        for (auto const &p: presented_chain) {
+        auto* c = retv.delta.mutable_record()->mutable_certificate();
+        for (auto const& p : presented_chain) {
             c->add_presented_chain(p);
         }
     }
@@ -337,7 +336,6 @@ static zsearch::CTServerStatus* get_ctss(int index, zsearch::CTStatus* cts) {
             return cts->mutable_certificatetransparency_cn_ct();
         case zsearch::CT_SERVER_LETSENCRYPT_CT_CLICKY:
             return cts->mutable_letsencrypt_ct_clicky();
-
     }
     return nullptr;
 }
@@ -360,7 +358,6 @@ AnonymousResult AnonymousStore<key_type>::put_external(
     size_t ch_len = ch_str.size();
     if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT ||
         ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT_CHAIN) {
-        // begin body
         void* cached_value = cachehash_get(m_cache, ch_key, ch_len);
         if (cached_value != nullptr) {
             return AnonymousResult::no_change();
@@ -368,7 +365,7 @@ AnonymousResult AnonymousStore<key_type>::put_external(
     }
     // pull out the presented chain for later
     std::vector<std::string> presented_chain;
-    zsearch::Certificate *c = rec->mutable_certificate();
+    zsearch::Certificate* c = rec->mutable_certificate();
     for (const auto& p : c->presented_chain()) {
         presented_chain.push_back(p);
     }
@@ -415,7 +412,8 @@ AnonymousResult AnonymousStore<key_type>::put_external(
         ct_status->set_index(ctrm.ct_status().index());
         ct_status->set_ct_timestamp(ctrm.ct_status().ct_timestamp());
         ct_status->set_pull_timestamp(ctrm.ct_status().pull_timestamp());
-    } else if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_MOZILLA_SALESFORCE) {
+    } else if (ctrm.source() ==
+               zsearch::CERTIFICATE_SOURCE_MOZILLA_SALESFORCE) {
         zsearch::Certificate* cert = rec->mutable_certificate();
         zsearch::CertificateAudit* audit = cert->mutable_audit();
         audit->mutable_mozilla()->CopyFrom(ctrm.nss_status());
@@ -433,11 +431,15 @@ AnonymousResult AnonymousStore<key_type>::put_external(
         rec->mutable_certificate()->set_source(ctrm.source());
     }
     auto retv = do_put_locked(k, *rec);
-    if (retv.success) {
+
+    if (retv.success &&
+        (ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT ||
+         ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT_CHAIN)) {
         cachehash_put(m_cache, ch_key, ch_len, this);
     }
-    auto *delta_c = retv.delta.mutable_record()->mutable_certificate();
-    for (const auto &p: presented_chain) {
+
+    auto* delta_c = retv.delta.mutable_record()->mutable_certificate();
+    for (const auto& p : presented_chain) {
         delta_c->add_presented_chain(p);
     }
     return retv;
@@ -493,7 +495,8 @@ AnonymousResult AnonymousStore<key_type>::put_processed_cert(Certificate& c) {
         log_error("anonstore", "out of range get in sct (how?)");
         return AnonymousResult::failure();
     } catch (...) {
-        log_error("anonstore", "unknown db exception in put_processed_certificate");
+        log_error("anonstore",
+                  "unknown db exception in put_processed_certificate");
         return AnonymousResult::failure();
     }
     auto orig_cert = ar.mutable_certificate();
@@ -548,7 +551,8 @@ AnonymousResult AnonymousStore<key_type>::do_put_locked(
 }
 
 template <typename key_type>
-uint64_t AnonymousStore<key_type>::regenerate_deltas(DeltaHandler& handler, size_t max_records) {
+uint64_t AnonymousStore<key_type>::regenerate_deltas(DeltaHandler& handler,
+                                                     size_t max_records) {
     uint64_t count = 0;
     for (auto it = begin(); it.valid(); ++it, ++count) {
         if (max_records && count >= max_records) {
