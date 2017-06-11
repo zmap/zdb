@@ -15,21 +15,36 @@
 #ifndef ZDB_SRC_CERTIFICATES_H
 #define ZDB_SRC_CERTIFICATES_H
 
-#include <algorithm>
 #include <ctime>
-#include <memory>
 #include <set>
 #include <string>
 
 #include "zsearch_definitions/search.pb.h"
 
-#include "macros.h"
-
 namespace zdb {
+
+const std::string kUnknownTranslation = "unknown";
+
+std::string translate_certificate_source(int source);
+
+std::string translate_certificate_type(int type);
 
 bool certificate_valid_at(const zsearch::Certificate& cert, std::time_t now);
 
 void expire_status(zsearch::RootStoreStatus* expired);
+
+bool certificate_has_ct_info(const zsearch::Certificate& c);
+
+bool certificate_has_google_ct(const zsearch::Certificate& c);
+
+bool certificate_has_valid_set(const zsearch::Certificate& c);
+
+bool certificate_has_was_valid_set(const zsearch::Certificate& c);
+
+void certificate_add_types_to_set(const zsearch::Certificate& c,
+                                  std::set<std::string>* out);
+
+bool certificate_has_ccadb(const zsearch::Certificate& c);
 
 }  // namespace zdb
 

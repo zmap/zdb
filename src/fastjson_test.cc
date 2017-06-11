@@ -13,6 +13,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <iostream>
 #include <json/json.h>
 
 #include "fastjson.h"
@@ -122,6 +123,15 @@ TEST(FastDumpTime, CorrectTimezone) {
     std::ostringstream f;
     fast_dump_utc_unix_timestamp(f, t);
     EXPECT_EQ("\"2000-01-01 00:00:00\"", f.str());
+}
+
+TEST(BuildCertificateTags, Empty) {
+    zsearch::AnonymousRecord rec;
+    std::set<std::string> tags = build_certificate_tags_from_record(rec);
+    for (const auto& k : tags) {
+        std::cerr << k << std::endl;
+    }
+    EXPECT_EQ(0, tags.size());
 }
 
 }  // namespace zdb

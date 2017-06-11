@@ -26,6 +26,7 @@
 #include <string>
 
 #include "anonymous_store.h"
+#include "certificates.h"
 #include "inbound.h"
 #include "protocol_names.h"
 #include "record.h"
@@ -64,52 +65,6 @@ void make_metadata_string(std::ostream& f,
         f << '\"' << g.first << "\":" << '\"' << g.second << '\"';
     }
     f << "}";
-}
-
-std::string translate_certificate_source(int source) {
-    switch (source) {
-        case 0:
-            // zero in the ENUM means reserved. However, we have many records
-            // where
-            // source is zero from before we track certificate sources. Until we
-            // rewrite all of these records, zero will have to mean a
-            // certificate from
-            // a scan.
-            return "reserved";
-        case 1:
-            return "unknown";
-        case 2:
-            return "scan";
-        case 3:
-            return "ct";
-        case 4:
-            return "mozilla_salesforce";
-        case 5:
-            return "research";
-        case 6:
-            return "rapid7";
-        case 7:
-            return "hubble";
-        default:
-            return "unknown";
-    }
-}
-
-std::string translate_certificate_type(int type) {
-    switch (type) {
-        case zsearch::CERTIFICATE_TYPE_RESERVED:
-            return "reserved";
-        case zsearch::CERTIFICATE_TYPE_UNKNOWN:
-            return "unknown";
-        case zsearch::CERTIFICATE_TYPE_LEAF:
-            return "leaf";
-        case zsearch::CERTIFICATE_TYPE_INTERMEDIATE:
-            return "intermediate";
-        case zsearch::CERTIFICATE_TYPE_ROOT:
-            return "root";
-        default:
-            return "unknown";
-    }
 }
 
 void fast_dump_ct_server(std::ostream& f, const zsearch::CTServerStatus ctss) {
@@ -278,11 +233,15 @@ void fast_dump_validation(
     f << "}";
 }
 
-void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time) {
+std::string format_unix_timestamp_to_rfc(uint32_t unix_time) {
     std::time_t t = static_cast<std::time_t>(unix_time);
     char buf[1024];
     std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::gmtime(&t));
-    f << "\"" << buf << "\"";
+    return std::string(buf);
+}
+
+void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time) {
+    f << "\"" << format_unix_timestamp_to_rfc(unix_time) << "\"";
 }
 
 void fast_dump_certificate(std::ostream& f,
@@ -327,7 +286,8 @@ void fast_dump_certificate(std::ostream& f,
     bool seen_in_scan = false;
     if (certificate.seen_in_scan()) {
         seen_in_scan = true;
-    } else if (certificate.source() == 0 || certificate.source() == 2) {
+    } else if (certificate.source() == zsearch::CERTIFICATE_SOURCE_RESERVED ||
+               certificate.source() == zsearch::CERTIFICATE_SOURCE_SCAN) {
         seen_in_scan = true;
     }
     f << ",\"seen_in_scan\":" << (seen_in_scan ? "true" : "false");
@@ -337,18 +297,85 @@ void fast_dump_certificate(std::ostream& f,
     f << ",\"ct\":";
     fast_dump_ct(f, certificate.ct());
 
+    f << ",\"precert\":" << (certificate.is_precert() ? "true" : "false");
+
     f << "}" << std::endl;
 }
 
-std::string dump_certificate_to_json_string(zsearch::AnonymousRecord rec) {
-    std::map<std::string, std::string> metadata;
+std::set<std::string> build_certificate_tags_from_record(
+        const zsearch::AnonymousRecord& rec) {
     std::set<std::string> tags;
-    for (const auto& p : rec.tags()) {
-        tags.insert(p);
+    // Tags from the record, on the off chance any are defined.
+    for (const auto& t : rec.tags()) {
+        tags.insert(t);
     }
     for (const auto& p : rec.userdata().public_tags()) {
         tags.insert(p);
     }
+
+    // Add "standardized" tags based on values set in the certificate.
+
+    // CT
+    const zsearch::Certificate& c = rec.certificate();
+    if (c.is_precert()) {
+        tags.insert("precert");
+    }
+    if (certificate_has_ct_info(c)) {
+        tags.insert("ct");
+    }
+    if (certificate_has_google_ct(c)) {
+        tags.insert("google-ct");
+    }
+
+    // Validation
+    if (c.post_processed()) {
+        if (certificate_has_valid_set(c)) {
+            tags.insert("valid");
+        }
+        if (certificate_has_was_valid_set(c)) {
+            tags.insert("valid");
+        }
+        certificate_add_types_to_set(c, &tags);
+    }
+
+    // Audit
+    if (certificate_has_ccadb(c)) {
+        tags.insert("ccadb");
+    }
+
+    // Parseability
+    if (c.post_processed() && c.parsed().empty()) {
+        tags.insert("unparseable");
+    }
+
+    // TODO: Add validation level (DV, OV, EV, etc.). This is currently only
+    // accessible by parsing "parsed".
+
+    // TODO: Add self-signed vs untrusted. Self-signed is currently only
+    // accessible by parsing "parsed".
+
+    // Expiration
+    if (c.not_valid_before() && c.not_valid_after()) {
+        if (c.expired()) {
+            tags.insert("expired");
+        } else {
+            tags.insert("unexpired");
+        }
+    }
+    return tags;
+}
+
+std::map<std::string, std::string> build_certificate_metadata_from_record(
+        const zsearch::AnonymousRecord& rec) {
+    std::map<std::string, std::string> out;
+    out["updated_at"] = format_unix_timestamp_to_rfc(rec.updated_at());
+    return out;
+}
+
+std::string dump_certificate_to_json_string(
+        const zsearch::AnonymousRecord& rec) {
+    std::map<std::string, std::string> metadata;
+    std::set<std::string> tags = build_certificate_tags_from_record(rec);
     for (const auto& p : rec.metadata()) {
         metadata[p.key()] = p.value();
     }

@@ -20,6 +20,12 @@
 #include "../censys-definitions/cpp/certificate.pb.h"
 #include "search.grpc.pb.h"
 
+std::set<std::string> build_certificate_tags_from_record(
+        const zsearch::AnonymousRecord& rec);
+
+std::map<std::string, std::string> build_certificate_metadata_from_record(
+        const zsearch::AnonymousRecord& rec);
+
 void fast_dump_ipv4_host(std::ostream& f,
                          uint32_t ip,
                          std::string domain,
@@ -40,7 +46,8 @@ void fast_dump_certificate(std::ostream& f,
                            std::set<std::string>& tags,
                            const zsearch::Certificate& certificate);
 
-std::string dump_certificate_to_json_string(zsearch::AnonymousRecord rec);
+std::string dump_certificate_to_json_string(
+        const zsearch::AnonymousRecord& rec);
 
 void fast_dump_repeated_bytes(
         std::ostream& f,
@@ -55,5 +62,7 @@ void fast_dump_root_store_status(
 void fast_dump_validation(
         std::ostream& f,
         const zsearch::CertificateValidation& certificateValidation);
+
+std::string format_unix_timestamp_to_rfc(uint32_t unix_time);
 
 void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time);
