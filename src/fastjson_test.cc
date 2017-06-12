@@ -13,9 +13,10 @@
  */
 
 #include <gtest/gtest.h>
-#include <iostream>
 #include <json/json.h>
+#include <iostream>
 
+#include "certificates.h"
 #include "fastjson.h"
 #include "util/strings.h"
 #include "zsearch_definitions/certificate.pb.h"
@@ -26,6 +27,26 @@ namespace {
 
 const std::string kTestHexSHA256Fp =
         "98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4";
+
+const std::string kParents[] = {
+        "731d3d9cfaa061487a1d71445a42f67df0afca2a6c2d2f98ff7b3ce112b1f568",
+        "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
+};
+const size_t kParentsLen = 2;
+
+const std::string kPathA[] = {
+        "9f5c853220c6e2015390a38cd0cba8b3a5caac6344b9c9223ec3d2612a846d3d",
+        "731d3d9cfaa061487a1d71445a42f67df0afca2a6c2d2f98ff7b3ce112b1f568",
+        "96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6",
+};
+const size_t kPathALen = 3;
+
+const std::string kPathB[] = {
+        "9f5c853220c6e2015390a38cd0cba8b3a5caac6344b9c9223ec3d2612a846d3d",
+        "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
+        "0687260331a72403d909f105e69bcf0d32e1bd2493ffc6d9206d11bcd6770739",
+};
+const size_t kPathBLen = 3;
 
 }  // namespace
 
@@ -52,8 +73,36 @@ TEST(FastDumpPath, ValidJSON) {
     EXPECT_EQ(kTestHexSHA256Fp, first.asString());
 }
 
-TEST(FastDumpRootStoreStatus, ValidJSONEmptyTrustedPathEmptyParents) {
+TEST(FastDumpRootStoreStatus, ValidJSON) {
+    // TODO: If we add more tests to fast_dump_root_store_status, parts of this
+    // test should be extracted out to a function. It's already very copy-paste
+    // heavy.
     zsearch::RootStoreStatus rss;
+    rss.set_valid(true);
+    rss.set_was_valid(true);
+    rss.set_trusted_path(true);
+    rss.set_had_trusted_path(true);
+    rss.set_blacklisted(false);
+    rss.set_whitelisted(false);
+    rss.set_type(zsearch::CERTIFICATE_TYPE_LEAF);
+    zsearch::Path* path_a = rss.add_trusted_paths();
+    for (size_t i = 0; i < kPathALen; ++i) {
+        std::string b;
+        ASSERT_TRUE(util::Strings::hex_decode(kPathA[i], &b));
+        path_a->add_sha256fp(b);
+    }
+    zsearch::Path* path_b = rss.add_trusted_paths();
+    for (size_t i = 0; i < kPathBLen; ++i) {
+        std::string b;
+        ASSERT_TRUE(util::Strings::hex_decode(kPathB[i], &b));
+        path_b->add_sha256fp(b);
+    }
+    rss.set_in_revocation_set(false);
+    for (size_t i = 0; i < kParentsLen; ++i) {
+        std::string b;
+        ASSERT_TRUE(util::Strings::hex_decode(kParents[i], &b));
+        rss.add_parents(b);
+    }
 
     std::ostringstream f;
     fast_dump_root_store_status(f, rss);
@@ -62,48 +111,41 @@ TEST(FastDumpRootStoreStatus, ValidJSONEmptyTrustedPathEmptyParents) {
     Json::Reader reader;
     bool ok = reader.parse(f.str().c_str(), root);
     ASSERT_TRUE(ok);
-    EXPECT_FALSE(root.isNull());
-    EXPECT_TRUE(root.isObject());
-    EXPECT_FALSE(root.isMember("parents"));
-    EXPECT_FALSE(root.isMember("trusted_paths"));
-}
+    EXPECT_EQ(rss.valid(), root["valid"].asBool());
+    EXPECT_EQ(rss.was_valid(), root["was_valid"].asBool());
+    EXPECT_EQ(rss.trusted_path(), root["trusted_path"].asBool());
+    EXPECT_EQ(rss.had_trusted_path(), root["had_trusted_path"].asBool());
+    EXPECT_EQ(rss.blacklisted(), root["blacklisted"].asBool());
+    EXPECT_EQ(rss.whitelisted(), root["whitelisted"].asBool());
+    EXPECT_EQ(translate_certificate_type(rss.type()), root["type"].asString());
 
-TEST(FastDumpRootStoreStatus, ValidJSONTrustedPathEmptyParents) {
-    zsearch::RootStoreStatus rss;
+    const Json::Value& paths = root["paths"];
+    ASSERT_TRUE(paths.isArray());
+    ASSERT_EQ(2, paths.size());
+    const Json::Value& json_path_a =
+            paths[static_cast<Json::ArrayIndex>(0)]["path"];
+    ASSERT_TRUE(json_path_a.isArray());
+    ASSERT_EQ(kPathALen, json_path_a.size());
+    for (size_t i = 0; i < kPathALen; ++i) {
+        Json::ArrayIndex idx = static_cast<Json::ArrayIndex>(i);
+        EXPECT_EQ(kPathA[i], json_path_a[idx].asString());
+    }
+    const Json::Value& json_path_b =
+            paths[static_cast<Json::ArrayIndex>(1)]["path"];
+    ASSERT_TRUE(json_path_b.isArray());
+    ASSERT_EQ(kPathBLen, json_path_b.size());
+    for (size_t i = 0; i < kPathBLen; ++i) {
+        Json::ArrayIndex idx = static_cast<Json::ArrayIndex>(i);
+        EXPECT_EQ(kPathB[i], json_path_b[idx].asString());
+    }
 
-    // Add an unset path.
-    rss.add_trusted_paths();
-
-    std::ostringstream f;
-    fast_dump_root_store_status(f, rss);
-
-    Json::Value root;
-    Json::Reader reader;
-    bool ok = reader.parse(f.str().c_str(), root);
-    ASSERT_TRUE(ok);
-    EXPECT_FALSE(root.isNull());
-    EXPECT_TRUE(root.isObject());
-    EXPECT_FALSE(root.isMember("parents"));
-    EXPECT_FALSE(root.isMember("trusted_paths"));
-}
-
-TEST(FastDumpRootStoreStatus, ValidJSONEmptyTrustedPathParents) {
-    zsearch::RootStoreStatus rss;
-    std::string b;
-    ASSERT_TRUE(util::Strings::hex_decode(kTestHexSHA256Fp, &b));
-    rss.add_parents(b);
-
-    std::ostringstream f;
-    fast_dump_root_store_status(f, rss);
-
-    Json::Value root;
-    Json::Reader reader;
-    bool ok = reader.parse(f.str().c_str(), root);
-    ASSERT_TRUE(ok);
-    EXPECT_FALSE(root.isNull());
-    EXPECT_TRUE(root.isObject());
-    EXPECT_TRUE(root.isMember("parents"));
-    EXPECT_FALSE(root.isMember("trusted_paths"));
+    const Json::Value& json_parents = root["parents"];
+    ASSERT_TRUE(json_parents.isArray());
+    ASSERT_EQ(kParentsLen, json_parents.size());
+    for (size_t i = 0; i < kParentsLen; ++i) {
+        Json::ArrayIndex idx = static_cast<Json::ArrayIndex>(i);
+        EXPECT_EQ(kParents[idx], json_parents[idx].asString());
+    }
 }
 
 TEST(FastDumpValidation, ValidJSON) {
@@ -118,8 +160,42 @@ TEST(FastDumpValidation, ValidJSON) {
     EXPECT_TRUE(ok);
 }
 
+TEST(FastDumpCertificateMetadata, ValidJSON) {
+    uint32_t added_at = 725760000;            // 1992-12-31T00:00:00+00:00
+    uint32_t updated_at = 1497190560;         // 2017-06-11T14:16:00+00:00
+    uint32_t post_processed_at = 1497190530;  // 2017-06-11:14:15:30+00:00
+
+    zsearch::Certificate c;
+    c.set_post_processed(true);
+    c.set_post_process_timestamp(post_processed_at);
+    c.set_seen_in_scan(false);
+    c.set_source(zsearch::CERTIFICATE_SOURCE_RESEARCH);
+    c.set_parse_version(12);
+    c.set_parse_error("a non-empty string");
+    c.set_parse_status(zsearch::CERTIFICATE_PARSE_STATUS_NOT_PARSED);
+
+    std::ostringstream f;
+    fast_dump_certificate_metadata(f, c, added_at, updated_at);
+
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+    EXPECT_EQ("1992-12-31 00:00:00", root["added_at"].asString());
+    EXPECT_EQ("2017-06-11 14:16:00", root["updated_at"].asString());
+    EXPECT_EQ(c.post_processed(), root["post_processed"].asBool());
+    EXPECT_EQ("2017-06-11 14:15:30", root["post_processed_at"].asString());
+    EXPECT_EQ(c.seen_in_scan(), root["seen_in_scan"].asBool());
+    EXPECT_EQ(translate_certificate_source(c.source()),
+              root["source"].asString());
+    EXPECT_EQ(c.parse_version(), root["parse_version"].asUInt());
+    EXPECT_EQ(c.parse_error(), root["parse_error"].asString());
+    EXPECT_EQ(translate_certificate_parse_status(c.parse_status()),
+              root["parse_status"].asString());
+}
+
 TEST(FastDumpTime, CorrectTimezone) {
-    uint32_t t = 946684800; // 2000-01-01T00:00:00+00:00
+    uint32_t t = 946684800;  // 2000-01-01T00:00:00+00:00
     std::ostringstream f;
     fast_dump_utc_unix_timestamp(f, t);
     EXPECT_EQ("\"2000-01-01 00:00:00\"", f.str());
@@ -128,10 +204,17 @@ TEST(FastDumpTime, CorrectTimezone) {
 TEST(BuildCertificateTags, Empty) {
     zsearch::AnonymousRecord rec;
     std::set<std::string> tags = build_certificate_tags_from_record(rec);
-    for (const auto& k : tags) {
-        std::cerr << k << std::endl;
-    }
     EXPECT_EQ(0, tags.size());
+}
+
+TEST(BuildCertificateTags, Expired) {
+    zsearch::AnonymousRecord rec;
+    rec.mutable_certificate()->set_not_valid_before(1);
+    rec.mutable_certificate()->set_not_valid_after(3);
+    rec.mutable_certificate()->set_expired(true);
+    std::set<std::string> tags = build_certificate_tags_from_record(rec);
+    EXPECT_EQ(1, tags.size());
+    EXPECT_EQ(1, tags.count("expired"));
 }
 
 }  // namespace zdb

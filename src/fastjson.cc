@@ -197,9 +197,11 @@ void fast_dump_root_store_status(
             if (first) {
                 first = false;
             } else {
-                f << ",";
+                f << ',';
             }
+            f << "{\"path\":";
             fast_dump_path(f, p);
+            f << '}';
         }
         f << "]";
     }
@@ -233,21 +235,46 @@ void fast_dump_validation(
     f << "}";
 }
 
-std::string format_unix_timestamp_to_rfc(uint32_t unix_time) {
+void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time) {
     std::time_t t = static_cast<std::time_t>(unix_time);
     char buf[1024];
     std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::gmtime(&t));
-    return std::string(buf);
+    f << "\"" << buf << "\"";
 }
 
-void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time) {
-    f << "\"" << format_unix_timestamp_to_rfc(unix_time) << "\"";
+void fast_dump_certificate_metadata(std::ostream& f,
+                                    const zsearch::Certificate& c,
+                                    uint32_t added_at,
+                                    uint32_t updated_at) {
+    f << "{";
+    f << "\"updated_at\":";
+    fast_dump_utc_unix_timestamp(f, updated_at);
+    f << ",\"added_at\":";
+    fast_dump_utc_unix_timestamp(f, added_at);
+    f << ",\"post_processed\":" << (c.post_processed() ? "true" : "false");
+    f << ",\"seen_in_scan\":" << (c.seen_in_scan() ? "true" : "false");
+    f << ",\"source\":" << '"' << translate_certificate_source(c.source())
+      << '"';
+    if (c.post_processed()) {
+        if (c.post_process_timestamp()) {
+            f << ",\"post_processed_at\":";
+            fast_dump_utc_unix_timestamp(f, c.post_process_timestamp());
+        }
+        f << ",\"parse_version\":" << std::to_string(c.parse_version());
+        if (!c.parse_error().empty()) {
+            f << ",\"parse_error\":" << '"' << c.parse_error() << '"';
+        }
+        f << ",\"parse_status\":" << '"'
+          << translate_certificate_parse_status(c.parse_status()) << '"';
+    }
+    f << "}";
 }
 
 void fast_dump_certificate(std::ostream& f,
-                           std::map<std::string, std::string>& metadata,
-                           std::set<std::string>& tags,
-                           const zsearch::Certificate& certificate) {
+                           const zsearch::Certificate& certificate,
+                           const std::set<std::string>& tags,
+                           uint32_t added_at,
+                           uint32_t updated_at) {
     f << "{";
     f << "\"raw\":\"" << base64_encode(certificate.raw()) << "\"";
     if (certificate.parse_status() == CERTIFICATE_PARSE_STATUS_SUCCESS ||
@@ -255,44 +282,24 @@ void fast_dump_certificate(std::ostream& f,
          certificate.parsed() != "")) {
         f << ",\"parsed\":" << certificate.parsed();
     }
-    if (metadata.size() > 0) {
-        f << ",\"metadata\":";
-        make_metadata_string(f, metadata);
-        // TODO: Do we even use this?
-    }
+    f << ",\"metadata\":";
+    fast_dump_certificate_metadata(f, certificate, added_at, updated_at);
+
     if (tags.size() > 0) {
         f << ",\"tags\":";
         make_tags_string(f, tags);
-        // TODO: Duplicate esloader tags
     }
 
     if (certificate.post_process_timestamp() > 0) {
         // Dump validation
         f << ",\"validation\":";
         fast_dump_validation(f, certificate.validation());
-        // Dump timestamp
-        f << ",\"post_process_timestamp\":";
-        fast_dump_utc_unix_timestamp(f, certificate.post_process_timestamp());
     }
 
     if (certificate.parents_size() > 0) {
         f << ",\"parents\":";
         fast_dump_repeated_bytes(f, certificate.parents());
     }
-
-    // calculate whether it's been seen in a scan based on whether the
-    // certificate
-    // originated from a scan or it has been since seen in a scan.
-    bool seen_in_scan = false;
-    if (certificate.seen_in_scan()) {
-        seen_in_scan = true;
-    } else if (certificate.source() == zsearch::CERTIFICATE_SOURCE_RESERVED ||
-               certificate.source() == zsearch::CERTIFICATE_SOURCE_SCAN) {
-        seen_in_scan = true;
-    }
-    f << ",\"seen_in_scan\":" << (seen_in_scan ? "true" : "false");
-    f << ",\"source\":\"" << translate_certificate_source(certificate.source())
-      << "\"";
 
     f << ",\"ct\":";
     fast_dump_ct(f, certificate.ct());
@@ -365,25 +372,15 @@ std::set<std::string> build_certificate_tags_from_record(
     return tags;
 }
 
-std::map<std::string, std::string> build_certificate_metadata_from_record(
-        const zsearch::AnonymousRecord& rec) {
-    std::map<std::string, std::string> out;
-    out["updated_at"] = format_unix_timestamp_to_rfc(rec.updated_at());
-    return out;
-}
-
 std::string dump_certificate_to_json_string(
         const zsearch::AnonymousRecord& rec) {
-    std::map<std::string, std::string> metadata;
+    // Build tags from the record.
     std::set<std::string> tags = build_certificate_tags_from_record(rec);
-    for (const auto& p : rec.metadata()) {
-        metadata[p.key()] = p.value();
-    }
-    for (const auto& p : rec.userdata().public_metadata()) {
-        metadata[p.key()] = p.value();
-    }
+
+    // Write metadata, tags, and the certificate to JSON.
     std::ostringstream f;
-    fast_dump_certificate(f, metadata, tags, rec.certificate());
+    fast_dump_certificate(f, rec.certificate(), tags, rec.added_at(),
+                          rec.updated_at());
     return f.str();
 }
 

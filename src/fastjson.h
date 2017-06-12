@@ -23,9 +23,6 @@
 std::set<std::string> build_certificate_tags_from_record(
         const zsearch::AnonymousRecord& rec);
 
-std::map<std::string, std::string> build_certificate_metadata_from_record(
-        const zsearch::AnonymousRecord& rec);
-
 void fast_dump_ipv4_host(std::ostream& f,
                          uint32_t ip,
                          std::string domain,
@@ -42,9 +39,15 @@ void fast_dump_ipv4_host(std::ostream& f,
                          Json::FastWriter& fastWriter);
 
 void fast_dump_certificate(std::ostream& f,
-                           std::map<std::string, std::string>& metadata,
-                           std::set<std::string>& tags,
-                           const zsearch::Certificate& certificate);
+                           const zsearch::Certificate& certificate,
+                           const std::set<std::string>& tags,
+                           uint32_t added_at,
+                           uint32_t updated_at);
+
+void fast_dump_certificate_metadata(std::ostream& f,
+                                    const zsearch::Certificate& c,
+                                    uint32_t added_at,
+                                    uint32_t updated_at);
 
 std::string dump_certificate_to_json_string(
         const zsearch::AnonymousRecord& rec);
@@ -62,7 +65,5 @@ void fast_dump_root_store_status(
 void fast_dump_validation(
         std::ostream& f,
         const zsearch::CertificateValidation& certificateValidation);
-
-std::string format_unix_timestamp_to_rfc(uint32_t unix_time);
 
 void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time);

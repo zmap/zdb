@@ -71,6 +71,23 @@ std::string translate_certificate_type(int type) {
     }
 }
 
+std::string translate_certificate_parse_status(int status) {
+    switch (status) {
+        case zsearch::CERTIFICATE_PARSE_STATUS_RESERVED:
+            return "reserved";
+        case zsearch::CERTIFICATE_PARSE_STATUS_UNKNOWN:
+            return "unknown";
+        case zsearch::CERTIFICATE_PARSE_STATUS_SUCCESS:
+            return "success";
+        case zsearch::CERTIFICATE_PARSE_STATUS_FAIL:
+            return "fail";
+        case zsearch::CERTIFICATE_PARSE_STATUS_NOT_PARSED:
+            return "not_parsed";
+        default:
+            return kUnknownTranslation;
+    }
+}
+
 bool certificate_valid_at(const zsearch::Certificate& cert, std::time_t now) {
     // Compile-time checks on std::time_t
     static_assert(std::is_integral<time_t>::value, "time not an integer");
