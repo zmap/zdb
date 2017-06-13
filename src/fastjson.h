@@ -39,12 +39,14 @@ void fast_dump_ipv4_host(std::ostream& f,
                          Json::FastWriter& fastWriter);
 
 void fast_dump_certificate(std::ostream& f,
+                           Json::FastWriter& writer,
                            const zsearch::Certificate& certificate,
                            const std::set<std::string>& tags,
                            uint32_t added_at,
                            uint32_t updated_at);
 
 void fast_dump_certificate_metadata(std::ostream& f,
+                                    Json::FastWriter& writer,
                                     const zsearch::Certificate& c,
                                     uint32_t added_at,
                                     uint32_t updated_at);

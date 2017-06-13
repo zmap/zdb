@@ -171,11 +171,13 @@ TEST(FastDumpCertificateMetadata, ValidJSON) {
     c.set_seen_in_scan(false);
     c.set_source(zsearch::CERTIFICATE_SOURCE_RESEARCH);
     c.set_parse_version(12);
-    c.set_parse_error("a non-empty string");
+    c.set_parse_error("a string with a \" in it");
     c.set_parse_status(zsearch::CERTIFICATE_PARSE_STATUS_NOT_PARSED);
 
     std::ostringstream f;
-    fast_dump_certificate_metadata(f, c, added_at, updated_at);
+    Json::FastWriter writer;
+    writer.omitEndingLineFeed();
+    fast_dump_certificate_metadata(f, writer, c, added_at, updated_at);
 
     Json::Value root;
     Json::Reader reader;
@@ -189,10 +191,7 @@ TEST(FastDumpCertificateMetadata, ValidJSON) {
     EXPECT_EQ(translate_certificate_source(c.source()),
               root["source"].asString());
     EXPECT_EQ(c.parse_version(), root["parse_version"].asUInt());
-#if 0
     EXPECT_EQ(c.parse_error(), root["parse_error"].asString());
-#endif
-    EXPECT_EQ("", root["parse_error"].asString());
     EXPECT_EQ(translate_certificate_parse_status(c.parse_status()),
               root["parse_status"].asString());
 }
