@@ -171,11 +171,13 @@ TEST(FastDumpCertificateMetadata, ValidJSON) {
     c.set_seen_in_scan(false);
     c.set_source(zsearch::CERTIFICATE_SOURCE_RESEARCH);
     c.set_parse_version(12);
-    c.set_parse_error("a non-empty string");
+    c.set_parse_error("a string with a \" in it");
     c.set_parse_status(zsearch::CERTIFICATE_PARSE_STATUS_NOT_PARSED);
 
     std::ostringstream f;
-    fast_dump_certificate_metadata(f, c, added_at, updated_at);
+    Json::FastWriter writer;
+    writer.omitEndingLineFeed();
+    fast_dump_certificate_metadata(f, writer, c, added_at, updated_at);
 
     Json::Value root;
     Json::Reader reader;
