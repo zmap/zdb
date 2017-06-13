@@ -261,9 +261,11 @@ void fast_dump_certificate_metadata(std::ostream& f,
             fast_dump_utc_unix_timestamp(f, c.post_process_timestamp());
         }
         f << ",\"parse_version\":" << std::to_string(c.parse_version());
+#if 0
         if (!c.parse_error().empty()) {
             f << ",\"parse_error\":" << '"' << c.parse_error() << '"';
         }
+#endif
         f << ",\"parse_status\":" << '"'
           << translate_certificate_parse_status(c.parse_status()) << '"';
     }

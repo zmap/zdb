@@ -189,7 +189,10 @@ TEST(FastDumpCertificateMetadata, ValidJSON) {
     EXPECT_EQ(translate_certificate_source(c.source()),
               root["source"].asString());
     EXPECT_EQ(c.parse_version(), root["parse_version"].asUInt());
+#if 0
     EXPECT_EQ(c.parse_error(), root["parse_error"].asString());
+#endif
+    EXPECT_EQ("", root["parse_error"].asString());
     EXPECT_EQ(translate_certificate_parse_status(c.parse_status()),
               root["parse_status"].asString());
 }
