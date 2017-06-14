@@ -220,17 +220,17 @@ void fast_dump_validation(
     f << "{";
     f << "\"nss\":";
     fast_dump_root_store_status(f, certificateValidation.nss());
-#if 0
     f << ",\"microsoft\":";
     fast_dump_root_store_status(f, certificateValidation.microsoft());
     f << ",\"apple\":";
     fast_dump_root_store_status(f, certificateValidation.apple());
+    f << ",\"google_ct_primary\":";
+    fast_dump_root_store_status(f, certificateValidation.google_ct_primary());
+#if 0
     f << ",\"java\":";
     fast_dump_root_store_status(f, certificateValidation.java());
     f << ",\"android\":";
     fast_dump_root_store_status(f, certificateValidation.android());
-    f << ",\"google_ct_primary\":";
-    fast_dump_root_store_status(f, certificateValidation.google_ct_primary())
 #endif
     f << "}";
 }
