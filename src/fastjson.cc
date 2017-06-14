@@ -237,8 +237,10 @@ void fast_dump_validation(
 
 std::string format_unix_utc_time(uint32_t unix_time) {
     std::time_t t = static_cast<std::time_t>(unix_time);
+    std::tm tm;
+    gmtime_r(&t, &tm);
     char buf[1024];
-    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::gmtime(&t));
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
     return std::string(buf);
 }
 
