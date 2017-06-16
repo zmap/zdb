@@ -155,16 +155,29 @@ TEST(CertificateHasCCADB, Empty) {
 
 TEST(CertificateHasCCADB, WasMozillaSalesforce) {
     zsearch::Certificate c;
-    c.mutable_audit()->mutable_mozilla()->set_was_in(true);
+    c.mutable_audit()->mutable_mozilla()->set_was_in_roots(true);
     EXPECT_TRUE(certificate_has_ccadb(c));
 }
 
-TEST(CertificateHasCCADB, InMozillaSalesforce) {
+TEST(CertificateHasCCADB, InMozillaSalesforceIntermediates) {
     zsearch::Certificate c;
-    c.mutable_audit()->mutable_mozilla()->set_current_in(true);
+    c.mutable_audit()->mutable_mozilla()->set_current_in_intermediates(true);
     EXPECT_TRUE(certificate_has_ccadb(c));
-    c.mutable_audit()->mutable_mozilla()->set_was_in(true);
+    c.mutable_audit()->mutable_mozilla()->set_was_in_intermediates(true);
     EXPECT_TRUE(certificate_has_ccadb(c));
 }
+
+TEST(CertificateHasCCADB, InMozillaSalesforceRoots) {
+    zsearch::Certificate c;
+    c.mutable_audit()->mutable_mozilla()->set_current_in_roots(true);
+    EXPECT_TRUE(certificate_has_ccadb(c));
+
+    c.Clear();
+    c.mutable_audit()->mutable_mozilla()->set_was_in_roots(true);
+    EXPECT_TRUE(certificate_has_ccadb(c));
+    c.mutable_audit()->mutable_mozilla()->set_current_in_roots(true);
+    EXPECT_TRUE(certificate_has_ccadb(c));
+}
+
 
 }  // namespace zdb

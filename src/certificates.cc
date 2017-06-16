@@ -305,7 +305,8 @@ void certificate_add_types_to_set(const zsearch::Certificate& c,
 
 bool certificate_has_ccadb(const zsearch::Certificate& c) {
     const zsearch::MozillaSalesForceStatus& ccadb = c.audit().mozilla();
-    return ccadb.was_in() || ccadb.current_in();
+    return ccadb.current_in_intermediates() || ccadb.was_in_intermediates() ||
+           ccadb.current_in_roots() || ccadb.was_in_roots();
 }
 
 }  // namespace zdb
