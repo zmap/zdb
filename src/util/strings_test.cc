@@ -20,6 +20,36 @@ namespace zdb {
 
 namespace util {
 
+struct StringsTransformTestData {
+    std::string input;
+    std::string expected_output;
+};
+
+class StringsTransformTest
+        : public testing::Test,
+          public testing::WithParamInterface<StringsTransformTestData> {
+};
+
+class ToLowerTest : public StringsTransformTest {};
+
+static const StringsTransformTestData kToLowerTests[] = {
+        {"", ""},
+        {"HELLO", "hello"},
+        {"hello", "hello"},
+        {"w_multiple_subject_RDN", "w_multiple_subject_rdn"},
+        {"w_multiple_issuer_RDN", "w_multiple_issuer_rdn"}
+};
+
+TEST_P(ToLowerTest, Match) {
+    StringsTransformTestData test = GetParam();
+    std::string output = Strings::to_lower(test.input);
+    EXPECT_EQ(test.expected_output, output);
+}
+
+INSTANTIATE_TEST_CASE_P(Strings,
+                        ToLowerTest,
+                        testing::ValuesIn(kToLowerTests));
+
 struct StringsPredicateTestData {
     std::string input;
     bool expected_output;

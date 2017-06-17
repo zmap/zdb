@@ -88,6 +88,33 @@ std::string translate_certificate_parse_status(int status) {
     }
 }
 
+std::string translate_zlint_lint_result_status(int result_status) {
+    switch (result_status) {
+        case zsearch::LINT_RESULT_RESERVED:
+            return "reserved";
+        case zsearch::LINT_RESULT_NA:
+            return "na";
+        case zsearch::LINT_RESULT_NE:
+            return "ne";
+        case zsearch::LINT_RESULT_PASS:
+            return "pass";
+        case zsearch::LINT_RESULT_INFO:
+            return "info";
+        case zsearch::LINT_RESULT_NOTICE:
+            return "notice";
+        case zsearch::LINT_RESULT_WARN:
+            return "warn";
+        case zsearch::LINT_RESULT_ERROR:
+            return "error";
+        case zsearch::LINT_RESULT_FATAL:
+            return "fatal";
+        case zsearch::LINT_RESULT_UNKNOWN:
+            return "unknown";
+        default:
+            return "unknown";
+    }
+}
+
 bool certificate_valid_at(const zsearch::Certificate& cert, std::time_t now) {
     // Compile-time checks on std::time_t
     static_assert(std::is_integral<time_t>::value, "time not an integer");

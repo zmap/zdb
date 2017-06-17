@@ -274,6 +274,63 @@ void fast_dump_certificate_metadata(std::ostream& f,
     f << writer.write(metadata);
 }
 
+void fast_dump_zlint(std::ostream& f, const zsearch::ZLint zlint) {
+    f << '{';
+    f << "\"version\":" << std::to_string(zlint.version());
+    f << ",\"notices_present\":"
+      << (zlint.notices_present() ? "true" : "false");
+    f << ",\"warnings_present\":"
+      << (zlint.warnings_present() ? "true" : "false");
+    f << ",\"errors_present\":" << (zlint.errors_present() ? "true" : "false");
+    f << ",\"fatals_present\":" << (zlint.fatals_present() ? "true" : "false");
+    const google::protobuf::Descriptor* lints_descriptor =
+            zlint.lints().GetDescriptor();
+    std::map<std::string, int> lints;
+    for (int i = 0; i < lints_descriptor->field_count(); ++i) {
+        const google::protobuf::FieldDescriptor* lint_field =
+                lints_descriptor->field(i);
+        assert(lint_field);
+        const google::protobuf::Descriptor* lint_descriptor =
+                lint_field->message_type();
+        if (!lint_descriptor) {
+            continue;
+        }
+        if (lint_descriptor->name() != "LintResult") {
+            continue;
+        }
+        const google::protobuf::FieldDescriptor* status_field =
+                lint_descriptor->FindFieldByName("result");
+        if (!status_field) {
+            continue;
+        }
+
+        const google::protobuf::Message& lint_result_msg =
+                zlint.lints().GetReflection()->GetMessage(zlint.lints(),
+                                                          lint_field);
+        int status = lint_result_msg.GetReflection()->GetEnumValue(
+                lint_result_msg, status_field);
+        if (status == zsearch::LINT_RESULT_RESERVED) {
+            continue;
+        }
+        lints[lint_field->name()] = status;
+    }
+    if (lints.size()) {
+        f << ",\"lints\":{";
+        bool first = true;
+        for (const auto& lint : lints) {
+            if (!first) {
+                f << ',';
+            }
+            f << '"' << util::Strings::to_lower(lint.first) << "\":\""
+              << translate_zlint_lint_result_status(lint.second) << '"';
+            first = false;
+        }
+        f << '}';
+    }
+    f << '}';
+    return;
+}
+
 void fast_dump_certificate(std::ostream& f,
                            Json::FastWriter& writer,
                            const zsearch::Certificate& certificate,
@@ -288,7 +345,8 @@ void fast_dump_certificate(std::ostream& f,
         f << ",\"parsed\":" << certificate.parsed();
     }
     f << ",\"metadata\":";
-    fast_dump_certificate_metadata(f, writer, certificate, added_at, updated_at);
+    fast_dump_certificate_metadata(f, writer, certificate, added_at,
+                                   updated_at);
 
     if (tags.size() > 0) {
         f << ",\"tags\":";
@@ -308,6 +366,13 @@ void fast_dump_certificate(std::ostream& f,
 
     f << ",\"ct\":";
     fast_dump_ct(f, certificate.ct());
+
+    // TODO: Dump audit information
+
+    if (certificate.zlint().version() > 0) {
+        f << ",\"zlint\":";
+        fast_dump_zlint(f, certificate.zlint());
+    }
 
     f << ",\"precert\":" << (certificate.is_precert() ? "true" : "false");
 

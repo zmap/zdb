@@ -15,14 +15,25 @@
 #include "util/strings.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <string>
 
 namespace zdb {
 
 namespace util {
+
+// static
+std::string Strings::to_lower(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    std::transform(s.cbegin(), s.cend(), std::inserter(out, out.end()),
+                   [](const char s) { return std::tolower(s); });
+    return out;
+}
 
 // static
 bool Strings::has_prefix(const std::string& prefix, const std::string& s) {

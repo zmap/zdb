@@ -31,6 +31,8 @@ std::string translate_certificate_type(int type);
 
 std::string translate_certificate_parse_status(int status);
 
+std::string translate_zlint_lint_result_status(int result_status);
+
 bool certificate_valid_at(const zsearch::Certificate& cert, std::time_t now);
 
 void expire_status(zsearch::RootStoreStatus* expired);

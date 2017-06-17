@@ -23,6 +23,9 @@ namespace util {
 
 class Strings {
   public:
+    // Returns s with std::tolower applied to all characters.
+    static std::string to_lower(const std::string& s);
+
     // Returns true if `s` starts with `prefix`. Returns false otherwise.
     static bool has_prefix(const std::string& prefix, const std::string& s);
 

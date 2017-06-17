@@ -196,6 +196,70 @@ TEST(FastDumpCertificateMetadata, ValidJSON) {
               root["parse_status"].asString());
 }
 
+TEST(FastDumpZLint, EmptyLints) {
+    zsearch::ZLint zlint;
+
+    std::ostringstream f;
+    fast_dump_zlint(f, zlint);
+
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+    EXPECT_FALSE(root.isMember("lints"));
+}
+
+TEST(FastDumpZLint, ValidJSON) {
+    zsearch::ZLint zlint;
+    zlint.mutable_lints()
+            ->mutable_e_basic_constraints_not_critical()
+            ->set_result(zsearch::LINT_RESULT_ERROR);
+    zlint.mutable_lints()->mutable_e_ian_bare_wildcard()->set_result(
+            zsearch::LINT_RESULT_FATAL);
+    zlint.mutable_lints()->mutable_w_multiple_issuer_rdn()->set_result(
+            zsearch::LINT_RESULT_PASS);
+
+    std::ostringstream f;
+    fast_dump_zlint(f, zlint);
+
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+
+    EXPECT_EQ(zlint.version(), root["version"].asUInt());
+
+    EXPECT_FALSE(root.isMember("infos_present"));
+    EXPECT_EQ(zlint.notices_present(), root["notices_present"].asBool());
+    EXPECT_EQ(zlint.warnings_present(), root["warnings_present"].asBool());
+    EXPECT_EQ(zlint.errors_present(), root["errors_present"].asBool());
+    EXPECT_EQ(zlint.fatals_present(), root["fatals_present"].asBool());
+
+    const Json::Value& lints = root["lints"];
+    ASSERT_TRUE(lints.isObject());
+    EXPECT_EQ(3, lints.size());
+
+    std::set<std::string> known_lint_status;
+    for (int i = zsearch::LintResultStatus_MIN;
+         i <= zsearch::LintResultStatus_MAX; ++i) {
+        std::string s = translate_zlint_lint_result_status(i);
+        known_lint_status.insert(s);
+    }
+
+    for (const Json::Value& lint : lints) {
+        ASSERT_TRUE(lint.isString());
+        EXPECT_NE("reserved", lint.asString());
+        EXPECT_EQ(1, known_lint_status.count(lint.asString()));
+    }
+
+    EXPECT_EQ(translate_zlint_lint_result_status(zsearch::LINT_RESULT_ERROR),
+              lints["e_basic_constraints_not_critical"].asString());
+    EXPECT_EQ(translate_zlint_lint_result_status(zsearch::LINT_RESULT_FATAL),
+              lints["e_ian_bare_wildcard"].asString());
+    EXPECT_EQ(translate_zlint_lint_result_status(zsearch::LINT_RESULT_PASS),
+              lints["w_multiple_issuer_rdn"].asString());
+}
+
 TEST(FastDumpTime, CorrectTimezone) {
     uint32_t t = 946684800;  // 2000-01-01T00:00:00+00:00
     std::ostringstream f;
