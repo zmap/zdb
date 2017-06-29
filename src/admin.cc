@@ -419,6 +419,15 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
                         expire_status(it->second.mutable_certificate()
                                               ->mutable_validation()
                                               ->mutable_nss());
+                        expire_status(it->second.mutable_certificate()
+                                              ->mutable_validation()
+                                              ->mutable_microsoft());
+                        expire_status(it->second.mutable_certificate()
+                                              ->mutable_validation()
+                                              ->mutable_apple());
+                        expire_status(it->second.mutable_certificate()
+                                              ->mutable_validation()
+                                              ->mutable_google_ct_primary());
                         out = delta_handler.get();
                     } else {
                         // Uncommon case: certificate is no longer expired. Send
