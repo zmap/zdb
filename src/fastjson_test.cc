@@ -283,4 +283,66 @@ TEST(BuildCertificateTags, Expired) {
     EXPECT_EQ(1, tags.count("expired"));
 }
 
+TEST(BuildCertificateTags, TrustedInTags) {
+    zsearch::AnonymousRecord rec;
+    rec.mutable_certificate()->set_not_valid_before(1);
+    rec.mutable_certificate()->set_not_valid_after(3);
+    rec.mutable_certificate()->set_expired(false);
+    rec.mutable_certificate()->set_post_processed(true);
+
+    // Parsed must be non-empty to indicate the rest of the fields are valid.
+    rec.mutable_certificate()->set_parsed("{}");
+
+    zsearch::RootStoreStatus* apple =
+            rec.mutable_certificate()->mutable_validation()->mutable_apple();
+    apple->set_valid(true);
+    apple->set_was_valid(true);
+    {
+        std::set<std::string> tags = build_certificate_tags_from_record(rec);
+        EXPECT_EQ(2, tags.size());
+        EXPECT_EQ(1, tags.count("unexpired"));
+        EXPECT_EQ(1, tags.count("trusted"));
+        EXPECT_EQ(0, tags.count("was-trusted"));
+    }
+
+    apple->set_valid(false);
+    {
+        std::set<std::string> tags = build_certificate_tags_from_record(rec);
+        EXPECT_EQ(2, tags.size());
+        EXPECT_EQ(1, tags.count("unexpired"));
+        EXPECT_EQ(0, tags.count("trusted"));
+        EXPECT_EQ(1, tags.count("was-trusted"));
+    }
+}
+
+TEST(BuildCertificateTags, UnknownTypeNotInTags) {
+    zsearch::AnonymousRecord rec;
+    rec.mutable_certificate()->set_not_valid_before(1);
+    rec.mutable_certificate()->set_not_valid_after(3);
+    rec.mutable_certificate()->set_expired(false);
+    rec.mutable_certificate()->set_post_processed(true);
+
+    // Parsed must be non-empty to indicate the rest of the fields are valid.
+    rec.mutable_certificate()->set_parsed("{}");
+
+    // Ensure "unknown" isn't added to tags.
+    rec.mutable_certificate()->mutable_validation()->mutable_nss()->set_type(
+            zsearch::CERTIFICATE_TYPE_UNKNOWN);
+    {
+        std::set<std::string> tags = build_certificate_tags_from_record(rec);
+        EXPECT_EQ(1, tags.size());
+        EXPECT_EQ(1, tags.count("unexpired"));
+    }
+
+    // Ensure "leaf" is added tags.
+    rec.mutable_certificate()->mutable_validation()->mutable_nss()->set_type(
+            zsearch::CERTIFICATE_TYPE_LEAF);
+    {
+        std::set<std::string> tags = build_certificate_tags_from_record(rec);
+        EXPECT_EQ(2, tags.size());
+        EXPECT_EQ(1, tags.count("unexpired"));
+        EXPECT_EQ(1, tags.count("leaf"));
+    }
+}
+
 }  // namespace zdb

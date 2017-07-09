@@ -407,10 +407,9 @@ std::set<std::string> build_certificate_tags_from_record(
     // Validation
     if (c.post_processed()) {
         if (certificate_has_valid_set(c)) {
-            tags.insert("valid");
-        }
-        if (certificate_has_was_valid_set(c)) {
-            tags.insert("valid");
+            tags.insert("trusted");
+        } else if (certificate_has_was_valid_set(c)) {
+            tags.insert("was-trusted");
         }
         certificate_add_types_to_set(c, &tags);
     }

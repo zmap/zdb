@@ -322,8 +322,15 @@ void certificate_add_types_to_set(const zsearch::Certificate& c,
                         root_store_status_msg.GetReflection()->GetEnum(
                                 root_store_status_msg, certificate_type_field);
         int cert_type = certificate_type_value_descriptor->number();
-        if (cert_type == zsearch::CERTIFICATE_TYPE_RESERVED) {
+        if (cert_type > zsearch::CertificateType_MAX || cert_type < 0) {
             continue;
+        }
+        switch (cert_type) {
+            case zsearch::CERTIFICATE_TYPE_RESERVED:
+            case zsearch::CERTIFICATE_TYPE_UNKNOWN:
+                continue;
+            default:
+                break;
         }
         out->insert(translate_certificate_type(cert_type));
     }
