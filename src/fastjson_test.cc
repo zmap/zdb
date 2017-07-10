@@ -161,80 +161,80 @@ TEST(FastDumpValidation, ValidJSON) {
 }
 
 TEST(FastDumpCT, Empty) {
-  zsearch::CTStatus status;
-  std::ostringstream f;
-  fast_dump_ct(f, status);
+    zsearch::CTStatus status;
+    std::ostringstream f;
+    fast_dump_ct(f, status);
 
-  Json::Value root;
-  Json::Reader reader;
-  bool ok = reader.parse(f.str().c_str(), root);
-  ASSERT_TRUE(ok);
-  EXPECT_EQ(0, root.size());
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+    EXPECT_EQ(0, root.size());
 }
 
 TEST(FastDumpCT, One) {
-  zsearch::CTStatus status;
-  status.mutable_google_pilot()->set_index(12);
+    zsearch::CTStatus status;
+    status.mutable_google_pilot()->set_index(12);
 
-  std::ostringstream f;
-  fast_dump_ct(f, status);
-  std::cerr << f.str() << std::endl;
+    std::ostringstream f;
+    fast_dump_ct(f, status);
+    std::cerr << f.str() << std::endl;
 
-  Json::Value root;
-  Json::Reader reader;
-  bool ok = reader.parse(f.str().c_str(), root);
-  ASSERT_TRUE(ok);
-  EXPECT_EQ(1, root.size());
-  EXPECT_TRUE(root.isMember("google_pilot"));
-  Json::Value google_pilot = root["google_pilot"];
-  EXPECT_EQ(12, google_pilot["index"].asUInt());
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+    EXPECT_EQ(1, root.size());
+    EXPECT_TRUE(root.isMember("google_pilot"));
+    Json::Value google_pilot = root["google_pilot"];
+    EXPECT_EQ(12, google_pilot["index"].asUInt());
 }
 
 TEST(FastDumpCT, Two) {
-  zsearch::CTStatus status;
-  status.mutable_google_pilot()->set_index(12);
-  status.mutable_digicert_ct1()->set_index(31);
+    zsearch::CTStatus status;
+    status.mutable_google_pilot()->set_index(12);
+    status.mutable_digicert_ct1()->set_index(31);
 
-  std::ostringstream f;
-  fast_dump_ct(f, status);
-  std::cerr << f.str() << std::endl;
+    std::ostringstream f;
+    fast_dump_ct(f, status);
+    std::cerr << f.str() << std::endl;
 
-  Json::Value root;
-  Json::Reader reader;
-  bool ok = reader.parse(f.str().c_str(), root);
-  ASSERT_TRUE(ok);
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
 
-  EXPECT_EQ(2, root.size());
-  EXPECT_TRUE(root.isMember("google_pilot"));
-  Json::Value google_pilot = root["google_pilot"];
-  EXPECT_EQ(12, google_pilot["index"].asUInt());
-  Json::Value digicert_ct1 = root["digicert_ct1"];
-  EXPECT_EQ(31, digicert_ct1["index"].asUInt());
+    EXPECT_EQ(2, root.size());
+    EXPECT_TRUE(root.isMember("google_pilot"));
+    Json::Value google_pilot = root["google_pilot"];
+    EXPECT_EQ(12, google_pilot["index"].asUInt());
+    Json::Value digicert_ct1 = root["digicert_ct1"];
+    EXPECT_EQ(31, digicert_ct1["index"].asUInt());
 }
 
 TEST(FastDumpCT, Three) {
-  zsearch::CTStatus status;
-  status.mutable_google_pilot()->set_index(12);
-  status.mutable_digicert_ct1()->set_index(31);
-  status.mutable_comodo_dodo()->set_index(1992);
+    zsearch::CTStatus status;
+    status.mutable_google_pilot()->set_index(12);
+    status.mutable_digicert_ct1()->set_index(31);
+    status.mutable_comodo_dodo()->set_index(1992);
 
-  std::ostringstream f;
-  fast_dump_ct(f, status);
-  std::cerr << f.str() << std::endl;
+    std::ostringstream f;
+    fast_dump_ct(f, status);
+    std::cerr << f.str() << std::endl;
 
-  Json::Value root;
-  Json::Reader reader;
-  bool ok = reader.parse(f.str().c_str(), root);
-  ASSERT_TRUE(ok);
+    Json::Value root;
+    Json::Reader reader;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
 
-  EXPECT_EQ(3, root.size());
-  EXPECT_TRUE(root.isMember("google_pilot"));
-  Json::Value google_pilot = root["google_pilot"];
-  EXPECT_EQ(12, google_pilot["index"].asUInt());
-  Json::Value digicert_ct1 = root["digicert_ct1"];
-  EXPECT_EQ(31, digicert_ct1["index"].asUInt());
-  Json::Value comodo_dodo = root["comodo_dodo"];
-  EXPECT_EQ(1992, comodo_dodo["index"].asUInt());
+    EXPECT_EQ(3, root.size());
+    EXPECT_TRUE(root.isMember("google_pilot"));
+    Json::Value google_pilot = root["google_pilot"];
+    EXPECT_EQ(12, google_pilot["index"].asUInt());
+    Json::Value digicert_ct1 = root["digicert_ct1"];
+    EXPECT_EQ(31, digicert_ct1["index"].asUInt());
+    Json::Value comodo_dodo = root["comodo_dodo"];
+    EXPECT_EQ(1992, comodo_dodo["index"].asUInt());
 }
 
 TEST(FastDumpCertificateMetadata, ValidJSON) {
@@ -295,6 +295,11 @@ TEST(FastDumpZLint, ValidJSON) {
             zsearch::LINT_RESULT_FATAL);
     zlint.mutable_lints()->mutable_w_multiple_issuer_rdn()->set_result(
             zsearch::LINT_RESULT_PASS);
+    zlint.mutable_lints()->mutable_w_multiple_subject_rdn()->set_result(
+            zsearch::LINT_RESULT_NA);
+    zlint.mutable_lints()
+            ->mutable_e_cert_contains_unique_identifier()
+            ->set_result(zsearch::LINT_RESULT_NE);
 
     std::ostringstream f;
     fast_dump_zlint(f, zlint);
@@ -335,6 +340,8 @@ TEST(FastDumpZLint, ValidJSON) {
               lints["e_ian_bare_wildcard"].asString());
     EXPECT_EQ(translate_zlint_lint_result_status(zsearch::LINT_RESULT_PASS),
               lints["w_multiple_issuer_rdn"].asString());
+    EXPECT_FALSE(lints.isMember("w_multiple_subject_rdn"));
+    EXPECT_FALSE(lints.isMember("e_cert_contains_unique_identifier"));
 }
 
 TEST(FastDumpTime, CorrectTimezone) {

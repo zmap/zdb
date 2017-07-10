@@ -273,7 +273,9 @@ void fast_dump_zlint(std::ostream& f, const zsearch::ZLint zlint) {
                                                           lint_field);
         int status = lint_result_msg.GetReflection()->GetEnumValue(
                 lint_result_msg, status_field);
-        if (status == zsearch::LINT_RESULT_RESERVED) {
+        if (status == zsearch::LINT_RESULT_RESERVED ||
+            status == zsearch::LINT_RESULT_NA ||
+            status == zsearch::LINT_RESULT_NE) {
             continue;
         }
         lints[lint_field->name()] = status;
