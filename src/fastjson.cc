@@ -332,8 +332,8 @@ void fast_dump_certificate(std::ostream& f,
     fast_dump_ct(f, certificate.ct());
 
     // TODO: Dump audit information
-
-    if (certificate.zlint().version() > 0) {
+    if (certificate.zlint().version() > 0 &&
+        certificate_is_or_was_trusted(certificate)) {
         f << ",\"zlint\":";
         fast_dump_zlint(f, certificate.zlint());
     }

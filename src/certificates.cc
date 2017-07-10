@@ -284,6 +284,10 @@ bool certificate_has_was_valid_set(const zsearch::Certificate& c) {
     return false;
 }
 
+bool certificate_is_or_was_trusted(const zsearch::Certificate& c) {
+    return certificate_has_was_valid_set(c) || certificate_has_valid_set(c);
+}
+
 void certificate_add_types_to_set(const zsearch::Certificate& c,
                                   std::set<std::string>* out) {
     const google::protobuf::Descriptor* validation_descriptor =

@@ -45,6 +45,8 @@ bool certificate_has_valid_set(const zsearch::Certificate& c);
 
 bool certificate_has_was_valid_set(const zsearch::Certificate& c);
 
+bool certificate_is_or_was_trusted(const zsearch::Certificate& c);
+
 void certificate_add_types_to_set(const zsearch::Certificate& c,
                                   std::set<std::string>* out);
 
