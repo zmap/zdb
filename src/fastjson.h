@@ -51,6 +51,8 @@ void fast_dump_certificate_metadata(std::ostream& f,
                                     uint32_t added_at,
                                     uint32_t updated_at);
 
+void fast_dump_ct(std::ostream& f, const zsearch::CTStatus& cts);
+
 void fast_dump_zlint(std::ostream& f, const zsearch::ZLint zlint);
 
 std::string dump_certificate_to_json_string(

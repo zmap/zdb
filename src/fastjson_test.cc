@@ -160,6 +160,83 @@ TEST(FastDumpValidation, ValidJSON) {
     EXPECT_TRUE(ok);
 }
 
+TEST(FastDumpCT, Empty) {
+  zsearch::CTStatus status;
+  std::ostringstream f;
+  fast_dump_ct(f, status);
+
+  Json::Value root;
+  Json::Reader reader;
+  bool ok = reader.parse(f.str().c_str(), root);
+  ASSERT_TRUE(ok);
+  EXPECT_EQ(0, root.size());
+}
+
+TEST(FastDumpCT, One) {
+  zsearch::CTStatus status;
+  status.mutable_google_pilot()->set_index(12);
+
+  std::ostringstream f;
+  fast_dump_ct(f, status);
+  std::cerr << f.str() << std::endl;
+
+  Json::Value root;
+  Json::Reader reader;
+  bool ok = reader.parse(f.str().c_str(), root);
+  ASSERT_TRUE(ok);
+  EXPECT_EQ(1, root.size());
+  EXPECT_TRUE(root.isMember("google_pilot"));
+  Json::Value google_pilot = root["google_pilot"];
+  EXPECT_EQ(12, google_pilot["index"].asUInt());
+}
+
+TEST(FastDumpCT, Two) {
+  zsearch::CTStatus status;
+  status.mutable_google_pilot()->set_index(12);
+  status.mutable_digicert_ct1()->set_index(31);
+
+  std::ostringstream f;
+  fast_dump_ct(f, status);
+  std::cerr << f.str() << std::endl;
+
+  Json::Value root;
+  Json::Reader reader;
+  bool ok = reader.parse(f.str().c_str(), root);
+  ASSERT_TRUE(ok);
+
+  EXPECT_EQ(2, root.size());
+  EXPECT_TRUE(root.isMember("google_pilot"));
+  Json::Value google_pilot = root["google_pilot"];
+  EXPECT_EQ(12, google_pilot["index"].asUInt());
+  Json::Value digicert_ct1 = root["digicert_ct1"];
+  EXPECT_EQ(31, digicert_ct1["index"].asUInt());
+}
+
+TEST(FastDumpCT, Three) {
+  zsearch::CTStatus status;
+  status.mutable_google_pilot()->set_index(12);
+  status.mutable_digicert_ct1()->set_index(31);
+  status.mutable_comodo_dodo()->set_index(1992);
+
+  std::ostringstream f;
+  fast_dump_ct(f, status);
+  std::cerr << f.str() << std::endl;
+
+  Json::Value root;
+  Json::Reader reader;
+  bool ok = reader.parse(f.str().c_str(), root);
+  ASSERT_TRUE(ok);
+
+  EXPECT_EQ(3, root.size());
+  EXPECT_TRUE(root.isMember("google_pilot"));
+  Json::Value google_pilot = root["google_pilot"];
+  EXPECT_EQ(12, google_pilot["index"].asUInt());
+  Json::Value digicert_ct1 = root["digicert_ct1"];
+  EXPECT_EQ(31, digicert_ct1["index"].asUInt());
+  Json::Value comodo_dodo = root["comodo_dodo"];
+  EXPECT_EQ(1992, comodo_dodo["index"].asUInt());
+}
+
 TEST(FastDumpCertificateMetadata, ValidJSON) {
     uint32_t added_at = 725760000;            // 1992-12-31T00:00:00+00:00
     uint32_t updated_at = 1497190560;         // 2017-06-11T14:16:00+00:00

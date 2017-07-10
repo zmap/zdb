@@ -83,74 +83,38 @@ void fast_dump_ct_server(std::ostream& f, const zsearch::CTServerStatus ctss) {
     f << "}";
 }
 
-void fast_dump_ct(std::ostream& f, const zsearch::CTStatus cts) {
-    f << "{";
-    f << "\"censys_dev\":";
-    fast_dump_ct_server(f, cts.censys_dev());
-    f << ",\"censys\":";
-    fast_dump_ct_server(f, cts.censys());
-    f << ",\"google_aviator\":";
-    fast_dump_ct_server(f, cts.google_aviator());
-    f << ",\"google_daedalus\":";
-    fast_dump_ct_server(f, cts.google_daedalus());
-    f << ",\"google_pilot\":";
-    fast_dump_ct_server(f, cts.google_pilot());
-    f << ",\"google_rocketeer\":";
-    fast_dump_ct_server(f, cts.google_rocketeer());
-    f << ",\"google_icarus\":";
-    fast_dump_ct_server(f, cts.google_icarus());
-    f << ",\"google_skydiver\":";
-    fast_dump_ct_server(f, cts.google_skydiver());
-    f << ",\"google_submariner\":";
-    fast_dump_ct_server(f, cts.google_submariner());
-    f << ",\"google_testtube\":";
-    fast_dump_ct_server(f, cts.google_testtube());
-    f << ",\"digicert_ct1\":";
-    fast_dump_ct_server(f, cts.digicert_ct1());
-    f << ",\"digicert_ct2\":";
-    fast_dump_ct_server(f, cts.digicert_ct2());
-    f << ",\"izenpe_com_ct\":";
-    fast_dump_ct_server(f, cts.izenpe_com_ct());
-    f << ",\"izenpe_eus_ct\":";
-    fast_dump_ct_server(f, cts.izenpe_eus_ct());
-    f << ",\"symantec_ws_ct\":";
-    fast_dump_ct_server(f, cts.symantec_ws_ct());
-    f << ",\"symantec_ws_vega\":";
-    fast_dump_ct_server(f, cts.symantec_ws_vega());
-    f << ",\"symantec_ws_deneb\":";
-    fast_dump_ct_server(f, cts.symantec_ws_deneb());
-    f << ",\"symantec_ws_sirius\":";
-    fast_dump_ct_server(f, cts.symantec_ws_sirius());
-    f << ",\"wosign_ctlog\":";
-    fast_dump_ct_server(f, cts.wosign_ctlog());
-    f << ",\"cnnic_ctserver\":";
-    fast_dump_ct_server(f, cts.cnnic_ctserver());
-    f << ",\"gdca_ct\":";
-    fast_dump_ct_server(f, cts.gdca_ct());
-    f << ",\"startssl_ct\":";
-    fast_dump_ct_server(f, cts.startssl_ct());
-    f << ",\"venafi_api_ctlog\":";
-    fast_dump_ct_server(f, cts.venafi_api_ctlog());
-    f << ",\"venafi_api_ctlog_gen2\":";
-    fast_dump_ct_server(f, cts.venafi_api_ctlog_gen2());
-    f << ",\"nordu_ct_plausible\":";
-    fast_dump_ct_server(f, cts.nordu_ct_plausible());
-    f << ",\"comodo_dodo\":";
-    fast_dump_ct_server(f, cts.comodo_dodo());
-    f << ",\"comodo_mammoth\":";
-    fast_dump_ct_server(f, cts.comodo_mammoth());
-    f << ",\"comodo_sabre\":";
-    fast_dump_ct_server(f, cts.comodo_sabre());
-    f << ",\"gdca_ctlog\":";
-    fast_dump_ct_server(f, cts.gdca_ctlog());
-    f << ",\"sheca_ct\":";
-    fast_dump_ct_server(f, cts.sheca_ct());
-    f << ",\"certificatetransparency_cn_ct\":";
-    fast_dump_ct_server(f, cts.certificatetransparency_cn_ct());
-    f << ",\"letsencrypt_ct_clicky\":";
-    fast_dump_ct_server(f, cts.letsencrypt_ct_clicky());
-
-    f << "}";
+void fast_dump_ct(std::ostream& f, const zsearch::CTStatus& cts) {
+    f << '{';
+    bool need_comma = false;
+    const google::protobuf::Descriptor* ct_descriptor = cts.GetDescriptor();
+    for (int i = 0; i < ct_descriptor->field_count(); ++i) {
+        const google::protobuf::FieldDescriptor* ct_server_field =
+                ct_descriptor->field(i);
+        assert(ct_server_field);
+        const google::protobuf::Descriptor* ct_server_descriptor =
+                ct_server_field->message_type();
+        if (!ct_server_descriptor) {
+            continue;
+        }
+        if (ct_server_descriptor->name() != "CTServerStatus") {
+            continue;
+        }
+        const google::protobuf::Message& ct_server_msg =
+                cts.GetReflection()->GetMessage(cts, ct_server_field);
+        const zsearch::CTServerStatus* ctss =
+                dynamic_cast<const zsearch::CTServerStatus*>(&ct_server_msg);
+        assert(ctss);
+        if (ctss->index() > 0 ||
+            ctss->push_status() != zsearch::CT_PUSH_STATUS_RESERVED) {
+            if (need_comma) {
+                f << ',';
+            }
+            f << '\"' << ct_server_field->name() << "\":";
+            fast_dump_ct_server(f, *ctss);
+            need_comma = true;
+        }
+    }
+    f << '}';
 }
 
 void fast_dump_repeated_bytes(
