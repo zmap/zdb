@@ -486,7 +486,7 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             response->set_error("could not open output file");
             return grpc::Status::OK;
         }
-        uint32_t num_threads = 12;
+        uint32_t num_threads = 24;
 #if 0
         if (request->threads() != 0) {
             num_threads = request->threads();
