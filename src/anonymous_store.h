@@ -354,6 +354,11 @@ AnonymousResult AnonymousStore<key_type>::put_external(
     // is mutable and we always want to write it to disk. This is OK because
     // there aren't that many certificates in Mozilla Salesforce.
     std::string ch_str = k.string() + std::to_string(ctrm.source());
+    if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT ||
+        ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT_CHAIN) {
+        ch_str += "|";
+        ch_str += std::to_string(ctrm.ct_server());
+    }
     const void* ch_key = ch_str.data();
     size_t ch_len = ch_str.size();
     if (ctrm.source() == zsearch::CERTIFICATE_SOURCE_CT ||
