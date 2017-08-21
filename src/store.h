@@ -97,8 +97,8 @@ struct equal_to<::zsearch::AnonymousKey> {
 
     static hash<::zsearch::AnonymousKey> h;
 
-    inline bool operator()(const ::zsearch::AnonymousKey& lhs,
-                           const ::zsearch::AnonymousKey& rhs) const {
+    bool operator()(const ::zsearch::AnonymousKey& lhs,
+                    const ::zsearch::AnonymousKey& rhs) const {
         return h(lhs) == h(rhs);
     }
 };
@@ -111,8 +111,8 @@ struct less<::zsearch::AnonymousKey> {
 
     static hash<::zsearch::AnonymousKey> h;
 
-    inline bool operator()(const ::zsearch::AnonymousKey& lhs,
-                           const ::zsearch::AnonymousKey& rhs) const {
+    bool operator()(const ::zsearch::AnonymousKey& lhs,
+                    const ::zsearch::AnonymousKey& rhs) const {
         return h(lhs) < h(rhs);
     }
 };
@@ -226,13 +226,11 @@ class Store {
 
     bool is_open() const { return m_db != nullptr; }
 
-    inline zsearch::Record get(const key_type& key) {
-        return m_db->get(key).pb();
-    }
+    zsearch::Record get(const key_type& key) { return m_db->get(key).pb(); }
     StoreResult put(zsearch::Record value);
     StoreResult del(const key_type& key);
 
-    inline bool empty() const { return m_db->empty(); }
+    bool empty() const { return m_db->empty(); }
     bool delete_all();
 
     class StoreIterator {
@@ -288,7 +286,7 @@ class Store {
         StoreIterator operator++(int) = delete;
 
         // Returns true if the underlying RocksDB iterator is valid
-        inline bool valid() const { return m_it.valid(); }
+        bool valid() const { return m_it.valid(); }
 
         friend void swap(StoreIterator&& first, StoreIterator&& second) {
             std::swap(first.m_it, second.m_it);
@@ -363,7 +361,7 @@ class Store {
 
         HostIterator operator++(int) = delete;
 
-        inline bool valid() const { return m_valid; }
+        bool valid() const { return m_valid; }
 
         friend void swap(HostIterator&& first, HostIterator&& second) {
             std::swap(first.m_it, second.m_it);
@@ -373,15 +371,15 @@ class Store {
 
     using host_iterator = HostIterator;
 
-    inline iterator begin() const { return StoreIterator(m_db->begin()); }
-    inline iterator end() const { return StoreIterator(m_db->end()); }
-    inline iterator upper_bound(key_type k) const {
+    iterator begin() const { return StoreIterator(m_db->begin()); }
+    iterator end() const { return StoreIterator(m_db->end()); }
+    iterator upper_bound(key_type k) const {
         return StoreIterator(m_db->upper_bound(k));
     }
     iterator find_subkey() { return StoreIterator(m_db->end()); }
 
-    inline host_iterator host_begin() const { return HostIterator(begin()); }
-    inline host_iterator host_upper_bound(key_type k) const {
+    host_iterator host_begin() const { return HostIterator(begin()); }
+    host_iterator host_upper_bound(key_type k) const {
         return HostIterator(upper_bound(k));
     }
 

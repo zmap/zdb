@@ -487,14 +487,14 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
             return grpc::Status::OK;
         }
         uint32_t num_threads = 24;
-#if 0
         if (request->threads() != 0) {
             num_threads = request->threads();
         }
-#endif
         log_debug("admin", "will dump certificates using %u threads",
                   num_threads);
         uint32_t max_records = request->max_records();
+        uint32_t start_prefix = request->start_ip();
+        uint32_t end_prefix = request->stop_ip();
         std::atomic<std::uint32_t> count;
         count = 0;
         log_debug("admin", "max certificates to dump: %u", max_records);

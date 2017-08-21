@@ -80,14 +80,14 @@ class AnonymousStore {
 
     bool is_open() const { return m_db != nullptr; }
 
-    inline AnonymousRecord get(const key_type& k) { return m_db->get(k).pb(); }
+    AnonymousRecord get(const key_type& k) { return m_db->get(k).pb(); }
     AnonymousResult put(AnonymousRecord& rec);
     AnonymousResult put_external(ExternalCertificate& ctrm);
     AnonymousResult put_sct(SCT& sct);
     AnonymousResult put_processed_cert(Certificate& c);
     AnonymousResult force_put(const AnonymousRecord& rec);
 
-    inline bool may_exist(const key_type& k) { return m_db->may_exist(k); }
+    bool may_exist(const key_type& k) { return m_db->may_exist(k); }
 
     class AnonIterator {
       public:
@@ -116,18 +116,18 @@ class AnonymousStore {
         AnonIterator(const AnonIterator& other) = delete;
         AnonIterator(AnonIterator&& other) = default;
 
-        inline bool operator==(const AnonIterator& other) const {
+        bool operator==(const AnonIterator& other) const {
             return m_it == other.m_it;
         }
 
-        inline bool operator!=(const AnonIterator& other) const {
+        bool operator!=(const AnonIterator& other) const {
             return !(other == *this);
         }
 
-        inline value_type operator*() const { return m_current; }
+        value_type operator*() const { return m_current; }
 
-        inline value_type* operator->() { return &m_current; }
-        inline AnonIterator& operator++() {
+        value_type* operator->() { return &m_current; }
+        AnonIterator& operator++() {
             ++m_it;
             update_current();
             return *this;
@@ -135,24 +135,27 @@ class AnonymousStore {
 
         AnonIterator& operator++(int) = delete;
 
-        inline bool valid() const { return m_it.valid(); }
+        bool valid() const { return m_it.valid(); }
     };
 
     using iterator = AnonIterator;
 
-    inline iterator find(const key_type& k) const {
-        return iterator(m_db->find(k));
+    iterator find(const key_type& k) const { return iterator(m_db->find(k)); }
+
+    iterator upper_bound(const key_type& k) const {
+        return iterator(m_db->upper_bound(k));
     }
-    inline iterator seek_start_of_shard(size_t target_shard) {
+
+    iterator seek_start_of_shard(size_t target_shard) {
         return iterator(m_db->seek_start_of_shard(target_shard));
     }
 
-    inline size_t shard_for(const key_type& k) { return m_db->shard_for(k); }
+    size_t shard_for(const key_type& k) { return m_db->shard_for(k); }
 
-    inline size_t total_shards(void) { return m_db->total_shards(); }
+    size_t total_shards(void) { return m_db->total_shards(); }
 
-    inline iterator begin() const { return iterator(m_db->begin()); }
-    inline iterator end() const { return iterator(m_db->end()); }
+    iterator begin() const { return iterator(m_db->begin()); }
+    iterator end() const { return iterator(m_db->end()); }
 
     uint64_t regenerate_deltas(DeltaHandler& handler, size_t max_records);
 
