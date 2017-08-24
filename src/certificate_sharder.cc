@@ -12,4 +12,25 @@
  * permissions and limitations under the License.
  */
 
-#include "sharded_db.h"
+#include "certificate_sharder.h"
+
+namespace zdb {
+
+size_t CertificateSharder::total_shards() const {
+    return kTotalShards;
+}
+
+size_t CertificateSharder::shard_for(const HashKey& k) const {
+    assert(!k.hash.empty());
+    uint8_t b = k.hash[0];
+    return static_cast<size_t>(b);
+}
+
+HashKey CertificateSharder::first_of(size_t shard_id) const {
+    assert(shard_id < kTotalShards);
+    uint32_t b = static_cast<uint8_t>(shard_id);
+    b <<= 24;
+    return HashKey::zero_pad_prefix(b, 32);
+}
+
+}  // namespace zdb

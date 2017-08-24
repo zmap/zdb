@@ -12,4 +12,21 @@
  * permissions and limitations under the License.
  */
 
-#include "sharded_db.h"
+#ifndef ZDB_SRC_DOMAIN_SHARDER_H
+#define ZDB_SRC_DOMAIN_SHARDER_H
+
+#include "sharder.h"
+#include "record.h"
+
+namespace zdb {
+
+class DomainSharder : public OneSharder<DomainKey> {
+  public:
+    DomainKey first_of(size_t shard_id) const override {
+        return DomainKey("", 0, 0, 0);
+    }
+};
+
+}  // namespace zdb
+
+#endif /* ZDB_SRC_DOMAIN_SHARDER_H */

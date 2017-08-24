@@ -191,6 +191,19 @@ TEST_F(DomainKeyTest, DeserializeFromString) {
     EXPECT_EQ(k, output);
 }
 
+TEST(HashKeyTest, ZeroPadPrefix) {
+  uint32_t prefix = 0x01020304U;
+  HashKey padded = HashKey::zero_pad_prefix(prefix, HashKey::SHA256_LEN);
+  ASSERT_EQ(HashKey::SHA256_LEN, padded.hash.size());
+  EXPECT_EQ(padded.hash[0], 0x01);
+  EXPECT_EQ(padded.hash[1], 0x02);
+  EXPECT_EQ(padded.hash[2], 0x03);
+  EXPECT_EQ(padded.hash[3], 0x04);
+  for (size_t i = 4; i < padded.hash.size(); ++i) {
+    EXPECT_EQ(padded.hash[i], '\0');
+  }
+}
+
 class ProtobufRecordTest : public ::testing::Test {
   protected:
     ProtobufRecord<zsearch::UserdataAtom> pbr;

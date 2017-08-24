@@ -12,4 +12,25 @@
  * permissions and limitations under the License.
  */
 
-#include "sharded_db.h"
+#ifndef ZDB_SRC_IPV4_SHARDER_H
+#define ZDB_SRC_IPV4_SHARDER_H
+
+#include "record.h"
+#include "sharder.h"
+
+namespace zdb {
+
+class IPv4Sharder : public Sharder<IPv4Key> {
+  private:
+    static const size_t kTotalShards = 256;
+    static const size_t kMask = 0xFFUL;
+
+  public:
+    virtual size_t total_shards() const override;
+    virtual size_t shard_for(const IPv4Key& k) const override;
+    virtual IPv4Key first_of(size_t shard_id) const override;
+};
+
+}  // namespace zdb
+
+#endif /* ZDB_SRC_IPV4_SHARDER_H */

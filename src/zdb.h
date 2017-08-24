@@ -15,11 +15,11 @@
 #ifndef ZDB_SRC_ZDB_H
 #define ZDB_SRC_ZDB_H
 
-#include <string>
 #include <exception>
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <string>
 #include <utility>
 
 #include <rocksdb/comparator.h>
@@ -32,6 +32,7 @@
 #include "db.h"
 #include "macros.h"
 #include "record_lock.h"
+#include "sharder.h"
 
 namespace zdb {
 
@@ -49,6 +50,8 @@ class ZDB : public DB<key_type, record_type> {
     rocksdb::WriteOptions m_write_options;
     rocksdb::ReadOptions m_read_options;
     std::string m_db_path;
+
+    std::unique_ptr<Sharder<key_type>> m_one_sharder;
 
     // Assignment and copy assignment
     ZDB(const ZDB& rhs) = delete;
@@ -186,12 +189,16 @@ class ZDB : public DB<key_type, record_type> {
 
   public:
     // Constructors and destructors
-    ZDB(rocksdb::DB* db) : m_db(db) {
+    ZDB(rocksdb::DB* db, std::unique_ptr<Sharder<key_type>> one_sharder)
+            : m_db(db), m_one_sharder(std::move(one_sharder)) {
         // Default to total order seek
         m_read_options.total_order_seek = true;
 
         // Set the sync options
         m_write_options.sync = false;
+
+        // Make sure we're not sharded.
+        assert(m_one_sharder->total_shards() == 1);
     }
 
     // Key-value functions
@@ -313,9 +320,9 @@ class ZDB : public DB<key_type, record_type> {
         return upper_bound(k, prefix_seek_opt);
     }
 
-    virtual size_t total_shards() const override { return 1; }
-
-    virtual size_t shard_for(const key_type& k) const override { return 0; }
+    virtual const Sharder<key_type>& sharder() const override {
+        return *m_one_sharder;
+    }
 
     virtual raw_record_iterator rr_begin() const override {
         rocksdb::Iterator* it = m_db->NewIterator(m_read_options);

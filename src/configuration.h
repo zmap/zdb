@@ -31,7 +31,6 @@
 #include "record.h"
 #include "store.h"
 #include "sharded_db.h"
-#include "zdb.h"
 
 namespace zdb {
 

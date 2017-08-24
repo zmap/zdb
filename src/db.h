@@ -25,6 +25,7 @@
 
 #include "macros.h"
 #include "serialize.h"
+#include "sharder.h"
 
 namespace zdb {
 
@@ -95,6 +96,7 @@ class DB {
       public:
         using value_type = typename impl_type::value_type;
 
+        DBIterator() = default;
         DBIterator(std::unique_ptr<impl_type> impl) : m_impl(std::move(impl)) {}
 
         DBIterator(const DBIterator& other) = delete;
@@ -108,6 +110,11 @@ class DB {
 
         bool operator!=(const DBIterator& other) const {
             return !(*m_impl == *other.m_impl);
+        }
+
+        DBIterator& operator=(DBIterator&& other) {
+          m_impl = std::move(other.m_impl);
+          return *this;
         }
 
         inline const value_type& operator*() const { return m_impl->get(); }
@@ -172,8 +179,7 @@ class DB {
     virtual raw_record_iterator rr_begin() const = 0;
     virtual raw_record_iterator rr_end() const = 0;
 
-    virtual size_t total_shards() const = 0;
-    virtual size_t shard_for(const key_type& k) const = 0;
+    virtual const Sharder<key_type>& sharder() const = 0;
 
     // Batch write
     virtual Batch make_batch(const key_type& prefix) const = 0;

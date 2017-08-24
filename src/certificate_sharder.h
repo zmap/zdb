@@ -12,4 +12,26 @@
  * permissions and limitations under the License.
  */
 
-#include "sharded_db.h"
+#ifndef ZDB_SRC_CERTIFICATE_SHARDER_H
+#define ZDB_SRC_CERTIFICATE_SHARDER_H
+
+#include <cassert>
+
+#include "record.h"
+#include "sharder.h"
+
+namespace zdb {
+
+class CertificateSharder : public Sharder<HashKey> {
+  public:
+    virtual size_t total_shards() const override;
+    virtual size_t shard_for(const HashKey& k) const override;
+    virtual HashKey first_of(size_t shard_id) const override;
+
+  private:
+    static const size_t kTotalShards = 256;
+};
+
+}  // namespace zdb
+
+#endif /* ZDB_SRC_CERTIFICATE_SHARDER_H */

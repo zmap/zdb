@@ -17,14 +17,16 @@
 
 #include <memory>
 
-#include <rocksdb/env.h>
 #include <rocksdb/cache.h>
+#include <rocksdb/env.h>
 
 #include "configuration.h"
 #include "db.h"
 #include "delta_handler.h"
 #include "record.h"
+#include "record_lock.h"
 #include "sharded_db.h"
+#include "sharder.h"
 #include "zdb.h"
 
 namespace zsearch {
@@ -41,7 +43,7 @@ using DomainDB = DB<DomainKey, ProtobufRecord<zsearch::Record>>;
 using CertificateDB = DB<HashKey, ProtobufRecord<zsearch::AnonymousRecord>>;
 
 using IPv4DBImpl = ShardedDB<IPv4Key, ProtobufRecord<zsearch::Record>>;
-using DomainDBImpl = ZDB<DomainKey, ProtobufRecord<zsearch::Record>>;
+using DomainDBImpl = DB<DomainKey, ProtobufRecord<zsearch::Record>>;
 using CertificateDBImpl =
         ShardedDB<HashKey, ProtobufRecord<zsearch::AnonymousRecord>>;
 
@@ -127,7 +129,8 @@ class RocksSingleContext : public RocksContext {
 };
 
 template <typename K, typename V, typename ContextType>
-std::unique_ptr<DB<K, V>> db_from_context(ContextType* ctx) {
+std::unique_ptr<DB<K, V>> db_from_context(ContextType* ctx,
+                                          std::unique_ptr<Sharder<K>> sharder) {
     if (!ctx) {
         return nullptr;
     }
@@ -135,7 +138,8 @@ std::unique_ptr<DB<K, V>> db_from_context(ContextType* ctx) {
         return nullptr;
     }
     using ImplType = typename ContextType::template DBImpl<K, V>;
-    return std::unique_ptr<DB<K, V>>(new ImplType(ctx->raw_db_ptr()));
+    return std::unique_ptr<DB<K, V>>(
+            new ImplType(ctx->raw_db_ptr(), std::move(sharder)));
 }
 
 class RocksShardedContext : public RocksContext {
@@ -258,8 +262,6 @@ class KafkaContext : public Context {
         return m_certificates_to_process.get();
     }
 
-
-
   private:
     // Consumers
     std::unique_ptr<KafkaConsumerConnection> m_ipv4;
@@ -281,8 +283,7 @@ class KafkaContext : public Context {
 };
 
 class DeltaContext : public Context {
-public:
-
+  public:
     DeltaContext(KafkaContext* kafka_ctx);
     virtual ~DeltaContext() = default;
 
@@ -290,8 +291,8 @@ public:
     std::unique_ptr<DeltaHandler> new_domain_delta_handler();
     std::unique_ptr<DeltaHandler> new_certificate_delta_handler();
     std::unique_ptr<DeltaHandler> new_certificates_to_process_delta_handler();
-private:
 
+  private:
     KafkaContext* m_kafka_ctx;
 
     DISALLOW_COPY_ASSIGN(DeltaContext);

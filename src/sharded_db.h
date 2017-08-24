@@ -27,39 +27,11 @@
 #include "db.h"
 #include "macros.h"
 #include "record.h"
+#include "sharder.h"
 
 namespace zdb {
 
-template <typename key_type>
-struct shard_for {
-    static const size_t total_shards;
-    size_t operator()(const key_type&) const;
-};
-
-template <>
-struct shard_for<IPv4Key> {
-    static const size_t total_shards;
-    size_t operator()(const IPv4Key& key) const {
-        // IP should be in network order
-        return key.ip & 0x000000FFU;
-    }
-};
-
-template <>
-struct shard_for<HashKey> {
-    static const size_t total_shards;
-    size_t operator()(const HashKey& key) const {
-        assert(!key.hash.empty());
-        uint8_t b = key.hash[0];
-        return static_cast<size_t>(b);
-    }
-};
-
-class ShardedOpener;
-
-template <typename key_type,
-          typename record_type,
-          typename shard_for_type = zdb::shard_for<key_type>>
+template <typename key_type, typename record_type>
 class ShardedDB : public DB<key_type, record_type> {
   private:
     // Type redeclarations
@@ -71,7 +43,8 @@ class ShardedDB : public DB<key_type, record_type> {
 
     // Member variables
     std::vector<rocksdb::DB*> m_db_shards;
-    shard_for_type m_shard_for;
+
+    std::unique_ptr<Sharder<key_type>> m_sharder;
 
     rocksdb::WriteOptions m_write_options_default;
     rocksdb::ReadOptions m_read_options_default;
@@ -80,9 +53,6 @@ class ShardedDB : public DB<key_type, record_type> {
     template <typename deserialized_type>
     class ShardedIteratorImpl
             : public db_type::template DBIteratorImpl<deserialized_type> {
-      public:
-        using Opener = ShardedOpener;
-
       private:
         // Type Declarations
         using DBIteratorImpl =
@@ -101,15 +71,18 @@ class ShardedDB : public DB<key_type, record_type> {
 
         value_type m_value;
         size_t m_current_shard;
+        Sharder<key_type>* m_sharder;
 
         ShardedIteratorImpl(const std::vector<rocksdb::DB*>& db_shards,
                             rocksdb::Iterator* it,
                             const rocksdb::ReadOptions& read_options,
-                            size_t current_shard)
+                            size_t current_shard,
+                            Sharder<key_type>* sharder)
                 : m_db_shards(db_shards),
                   m_it(it),
                   m_read_options(read_options),
-                  m_current_shard(current_shard) {
+                  m_current_shard(current_shard),
+                  m_sharder(sharder) {
             update_current();
         }
 
@@ -121,7 +94,7 @@ class ShardedDB : public DB<key_type, record_type> {
                 delete m_it;
                 m_it = nullptr;
                 ++m_current_shard;
-                if (m_current_shard >= shard_for_type::total_shards) {
+                if (m_current_shard >= m_sharder->total_shards()) {
                     return;
                 }
                 m_it = m_db_shards[m_current_shard]->NewIterator(
@@ -138,8 +111,10 @@ class ShardedDB : public DB<key_type, record_type> {
         ShardedIteratorImpl(ShardedIteratorImpl&& other)
                 : m_db_shards(other.m_db_shards),
                   m_it(other.m_it),
-                  m_read_options(other.m_read_options) {
+                  m_read_options(other.m_read_options),
+                  m_sharder(other.m_sharder) {
             other.m_it = nullptr;
+            other.m_sharder = nullptr;
         }
 
         virtual bool valid() const override { return m_it && m_it->Valid(); }
@@ -190,8 +165,8 @@ class ShardedDB : public DB<key_type, record_type> {
 
   private:
     iterator find(const key_type& k, const rocksdb::ReadOptions& opt) const {
-        auto target_shard = m_shard_for(k);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(k);
+        assert(target_shard < m_sharder->total_shards());
         auto it = m_db_shards[target_shard]->NewIterator(opt);
         auto kstr = k.string();
         rocksdb::Slice ks(kstr);
@@ -207,12 +182,14 @@ class ShardedDB : public DB<key_type, record_type> {
             return end();
         }
         std::unique_ptr<iterator_impl> impl_ptr(
-                new iterator_impl(m_db_shards, it, opt, target_shard));
+                new iterator_impl(m_db_shards, it, opt, target_shard, m_sharder.get()));
         return iterator(std::move(impl_ptr));
     }
 
   public:
-    ShardedDB(std::vector<rocksdb::DB*> db_shards) : m_db_shards(db_shards) {
+    ShardedDB(std::vector<rocksdb::DB*> db_shards,
+              std::unique_ptr<Sharder<key_type>> sharder)
+            : m_db_shards(db_shards), m_sharder(std::move(sharder)) {
         // TODO: Take these in the constructor and have them be configurable in
         // the configuration JSON.
 
@@ -224,7 +201,7 @@ class ShardedDB : public DB<key_type, record_type> {
         m_write_options_default.sync = false;
 
         // Sanity check
-        assert(shard_for_type::total_shards == m_db_shards.size());
+        assert(m_sharder->total_shards() == m_db_shards.size());
     }
 
     // Key-value functions
@@ -233,8 +210,8 @@ class ShardedDB : public DB<key_type, record_type> {
     }
 
     virtual bool put(const key_type& key, const record_type& record) override {
-        auto target_shard = m_shard_for(key);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(key);
+        assert(target_shard < m_sharder->total_shards());
         auto ks = key.string();
         auto rs = record.string();
         rocksdb::Slice key_slice(ks);
@@ -245,7 +222,7 @@ class ShardedDB : public DB<key_type, record_type> {
     }
 
     virtual bool del(const key_type& key) override {
-        auto target_shard = m_shard_for(key);
+        auto target_shard = m_sharder->shard_for(key);
         auto ks = key.string();
         rocksdb::Slice key_slice(ks);
         auto status = m_db_shards[target_shard]->Delete(m_write_options_default,
@@ -254,7 +231,7 @@ class ShardedDB : public DB<key_type, record_type> {
     }
 
     virtual bool may_exist(const key_type& key) const override {
-        auto target_shard = m_shard_for(key);
+        auto target_shard = m_sharder->shard_for(key);
         auto ks = key.string();
         rocksdb::Slice key_slice(ks);
         std::string s;
@@ -263,8 +240,8 @@ class ShardedDB : public DB<key_type, record_type> {
     }
 
     virtual std::string get_serialized(const key_type& key) const override {
-        auto target_shard = m_shard_for(key);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(key);
+        assert(target_shard < m_sharder->total_shards());
 
         auto ks = key.string();
         rocksdb::Slice key_slice(ks);
@@ -291,8 +268,8 @@ class ShardedDB : public DB<key_type, record_type> {
     virtual bool put_serialized(const key_type& key,
                                 const void* data,
                                 size_t len) override {
-        auto target_shard = m_shard_for(key);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(key);
+        assert(target_shard < m_sharder->total_shards());
         auto ks = key.string();
         rocksdb::Slice key_slice(ks);
         rocksdb::Slice record_slice(static_cast<const char*>(data), len);
@@ -322,16 +299,17 @@ class ShardedDB : public DB<key_type, record_type> {
         rocksdb::Iterator* it =
                 m_db_shards.front()->NewIterator(m_read_options_default);
         it->SeekToFirst();
-        std::unique_ptr<iterator_impl> impl_ptr(
-                new iterator_impl(m_db_shards, it, m_read_options_default, 0));
+        std::unique_ptr<iterator_impl> impl_ptr(new iterator_impl(
+                m_db_shards, it, m_read_options_default, 0, m_sharder.get()));
         return iterator(std::move(impl_ptr));
     }
 
     virtual iterator end() const override {
         rocksdb::Iterator* it =
                 m_db_shards.back()->NewIterator(m_read_options_default);
-        std::unique_ptr<iterator_impl> impl_ptr(new iterator_impl(
-                m_db_shards, it, m_read_options_default, m_db_shards.size()));
+        std::unique_ptr<iterator_impl> impl_ptr(
+                new iterator_impl(m_db_shards, it, m_read_options_default,
+                                  m_db_shards.size(), m_sharder.get()));
         return iterator(std::move(impl_ptr));
     }
 
@@ -344,8 +322,8 @@ class ShardedDB : public DB<key_type, record_type> {
     }
 
     virtual iterator upper_bound(const key_type& k) const override {
-        auto target_shard = m_shard_for(k);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(k);
+        assert(target_shard < m_sharder->total_shards());
         auto kstr = k.string();
         rocksdb::Slice ks(kstr);
         auto it =
@@ -354,8 +332,9 @@ class ShardedDB : public DB<key_type, record_type> {
 
         // Check if we found something
         if (it->Valid()) {
-            std::unique_ptr<iterator_impl> impl_ptr(new iterator_impl(
-                    m_db_shards, it, m_read_options_default, target_shard));
+            std::unique_ptr<iterator_impl> impl_ptr(
+                    new iterator_impl(m_db_shards, it, m_read_options_default,
+                                      target_shard, m_sharder.get()));
             return iterator(std::move(impl_ptr));
         }
 
@@ -364,14 +343,14 @@ class ShardedDB : public DB<key_type, record_type> {
 
         // Find the next valid thing in the database
         for (auto current_shard = target_shard + 1;
-             current_shard < shard_for_type::total_shards; ++current_shard) {
+             current_shard < m_sharder->total_shards(); ++current_shard) {
             it = m_db_shards[current_shard]->NewIterator(
                     m_read_options_default);
             it->SeekToFirst();
             if (it->Valid()) {
                 std::unique_ptr<iterator_impl> impl_ptr(new iterator_impl(
-                        m_db_shards, it, m_read_options_default,
-                        current_shard));
+                        m_db_shards, it, m_read_options_default, current_shard,
+                        m_sharder.get()));
                 return iterator(std::move(impl_ptr));
             }
             delete it;
@@ -380,8 +359,8 @@ class ShardedDB : public DB<key_type, record_type> {
     }
 
     virtual iterator upper_bound_prefix_seek(const key_type& k) const override {
-        auto target_shard = m_shard_for(k);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(k);
+        assert(target_shard < m_sharder->total_shards());
         auto it = m_db_shards[target_shard]->NewIterator(
                 m_read_options_prefix_seek);
         auto kstr = k.string();
@@ -396,27 +375,23 @@ class ShardedDB : public DB<key_type, record_type> {
             return end();
         }
         std::unique_ptr<iterator_impl> impl_ptr(new iterator_impl(
-                m_db_shards, it, m_read_options_prefix_seek, target_shard));
+                m_db_shards, it, m_read_options_prefix_seek, target_shard, m_sharder.get()));
         return iterator(std::move(impl_ptr));
     }
 
-    virtual size_t total_shards() const override {
-        return shard_for_type::total_shards;
-    }
-
-    virtual size_t shard_for(const key_type& k) const override {
-        return m_shard_for(k);
+    virtual const Sharder<key_type>& sharder() const override {
+        return *m_sharder;
     }
 
     virtual iterator seek_start_of_shard(
             const size_t target_shard) const override {
-        assert(target_shard < shard_for_type::total_shards);
+        assert(target_shard < m_sharder->total_shards());
         auto it =
                 m_db_shards[target_shard]->NewIterator(m_read_options_default);
         it->SeekToFirst();
         if (it->Valid()) {
             std::unique_ptr<iterator_impl> impl_ptr(new iterator_impl(
-                    m_db_shards, it, m_read_options_default, target_shard));
+                    m_db_shards, it, m_read_options_default, target_shard, m_sharder.get()));
             return iterator(std::move(impl_ptr));
         }
         delete it;
@@ -429,7 +404,7 @@ class ShardedDB : public DB<key_type, record_type> {
         it->SeekToFirst();
         std::unique_ptr<raw_record_iterator_impl> impl_ptr(
                 new raw_record_iterator_impl(m_db_shards, it,
-                                             m_read_options_default, 0));
+                                             m_read_options_default, 0, m_sharder.get()));
         return raw_record_iterator(std::move(impl_ptr));
     }
 
@@ -439,17 +414,17 @@ class ShardedDB : public DB<key_type, record_type> {
         std::unique_ptr<raw_record_iterator_impl> impl_ptr(
                 new raw_record_iterator_impl(m_db_shards, it,
                                              m_read_options_default,
-                                             m_db_shards.size()));
+                                             m_db_shards.size(), m_sharder.get()));
         return raw_record_iterator(std::move(impl_ptr));
     }
 
     // Batch write
     virtual Batch make_batch(const key_type& prefix) const override {
-        auto target_shard = m_shard_for(prefix);
-        assert(target_shard < shard_for_type::total_shards);
+        auto target_shard = m_sharder->shard_for(prefix);
+        assert(target_shard < m_sharder->total_shards());
         std::function<bool(const key_type&)> validator =
                 [=](const key_type& k) {
-                    return this->m_shard_for(k) == target_shard;
+                    return this->m_sharder->shard_for(k) == target_shard;
                 };
         return db_type::make_batch(std::move(validator),
                                    m_db_shards[target_shard],

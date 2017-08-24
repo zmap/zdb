@@ -12,4 +12,23 @@
  * permissions and limitations under the License.
  */
 
-#include "sharded_db.h"
+#include "ipv4_sharder.h"
+
+namespace zdb {
+
+size_t IPv4Sharder::total_shards() const {
+    return kTotalShards;
+}
+
+size_t IPv4Sharder::shard_for(const IPv4Key& k) const {
+    // IP should be in network order
+    return k.ip & kMask;
+}
+
+IPv4Key IPv4Sharder::first_of(size_t shard_id) const {
+    assert(shard_id < kTotalShards);
+    uint32_t b = static_cast<uint8_t>(shard_id);
+    return IPv4Key(b, 0, 0, 0);
+}
+
+}  // namespace zdb

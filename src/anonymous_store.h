@@ -24,10 +24,12 @@
 
 #include <cachehash/cachehash.h>
 
+#include "db.h"
 #include "delta_handler.h"
 #include "macros.h"
 #include "record.h"
-#include "zdb.h"
+#include "record_lock.h"
+#include "sharder.h"
 #include "zsearch_definitions/search.grpc.pb.h"
 
 namespace zdb {
@@ -113,6 +115,7 @@ class AnonymousStore {
         }
 
       public:
+        AnonIterator() = default;
         AnonIterator(const AnonIterator& other) = delete;
         AnonIterator(AnonIterator&& other) = default;
 
@@ -122,6 +125,12 @@ class AnonymousStore {
 
         bool operator!=(const AnonIterator& other) const {
             return !(other == *this);
+        }
+
+        AnonIterator& operator=(AnonIterator&& other) {
+          m_it = std::move(other.m_it);
+          m_current = std::move(other.m_current);
+          return *this;
         }
 
         value_type operator*() const { return m_current; }
@@ -150,9 +159,7 @@ class AnonymousStore {
         return iterator(m_db->seek_start_of_shard(target_shard));
     }
 
-    size_t shard_for(const key_type& k) { return m_db->shard_for(k); }
-
-    size_t total_shards(void) { return m_db->total_shards(); }
+    const Sharder<key_type>& sharder() const { return m_db->sharder(); }
 
     iterator begin() const { return iterator(m_db->begin()); }
     iterator end() const { return iterator(m_db->end()); }

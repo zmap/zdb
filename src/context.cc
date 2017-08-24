@@ -24,8 +24,11 @@
 
 #include <zmap/logger.h>
 
+#include "certificate_sharder.h"
 #include "delta_handler.h"
+#include "domain_sharder.h"
 #include "grouping_delta_handler.h"
+#include "ipv4_sharder.h"
 #include "kafka_topic_delta_handler.h"
 #include "rocks_util.h"
 #include "util/file.h"
@@ -236,12 +239,15 @@ DBContext::DBContext(std::unique_ptr<RocksShardedContext> ipv4_rctx,
           m_domain_rctx(std::move(domain_rctx)),
           m_certificate_rctx(std::move(certificate_rctx)) {
     m_ipv4 = db_from_context<IPv4Key, ProtobufRecord<zsearch::Record>>(
-            m_ipv4_rctx.get());
+            m_ipv4_rctx.get(),
+            std::unique_ptr<Sharder<IPv4Key>>(new IPv4Sharder));
     m_domain = db_from_context<DomainKey, ProtobufRecord<zsearch::Record>>(
-            m_domain_rctx.get());
+            m_domain_rctx.get(),
+            std::unique_ptr<Sharder<DomainKey>>(new DomainSharder));
     m_certificate =
             db_from_context<HashKey, ProtobufRecord<zsearch::AnonymousRecord>>(
-                    m_certificate_rctx.get());
+                    m_certificate_rctx.get(),
+                    std::unique_ptr<Sharder<HashKey>>(new CertificateSharder));
 }
 
 LockContext::LockContext(size_t ipv4_threads,
@@ -310,8 +316,8 @@ void KafkaContext::connect_enabled(const EnableMap& enabled) {
 DeltaContext::DeltaContext(KafkaContext* kafka_ctx) : m_kafka_ctx(kafka_ctx) {}
 
 std::unique_ptr<DeltaHandler> DeltaContext::new_ipv4_delta_handler() {
-    std::unique_ptr<DeltaHandler> kafka_handler(new KafkaTopicDeltaHandler(
-            m_kafka_ctx->ipv4_deltas()));
+    std::unique_ptr<DeltaHandler> kafka_handler(
+            new KafkaTopicDeltaHandler(m_kafka_ctx->ipv4_deltas()));
     std::unique_ptr<DeltaHandler> handler(
             new GroupingDeltaHandler(GroupingDeltaHandler::GROUP_IP));
     GroupingDeltaHandler* grouping_handler =
@@ -321,8 +327,8 @@ std::unique_ptr<DeltaHandler> DeltaContext::new_ipv4_delta_handler() {
 }
 
 std::unique_ptr<DeltaHandler> DeltaContext::new_domain_delta_handler() {
-    std::unique_ptr<DeltaHandler> kafka_handler(new KafkaTopicDeltaHandler(
-            m_kafka_ctx->domain_deltas()));
+    std::unique_ptr<DeltaHandler> kafka_handler(
+            new KafkaTopicDeltaHandler(m_kafka_ctx->domain_deltas()));
     std::unique_ptr<DeltaHandler> handler(
             new GroupingDeltaHandler(GroupingDeltaHandler::GROUP_DOMAIN));
     GroupingDeltaHandler* grouping_handler =
