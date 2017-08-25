@@ -153,6 +153,7 @@ class HashKey {
     static HashKey from_string(const std::string&& raw);
     static HashKey from_record(const zsearch::Record& record);
     static HashKey from_record(const zsearch::AnonymousRecord& record);
+    static HashKey zero_pad_prefix(uint32_t prefix, size_t length);
 
     static const HashKey& reserved();
     static const HashKey& deleted();
@@ -160,8 +161,11 @@ class HashKey {
     static std::shared_ptr<const rocksdb::SliceTransform> prefix_extractor();
 
     bool operator==(const HashKey& rhs) const;
+    bool operator<(const HashKey& rhs) const;
 
     std::string print() const;
+
+    static const size_t SHA256_LEN;
 };
 
 class StringRecord {

@@ -54,7 +54,7 @@
 #include "record.h"
 #include "search.grpc.pb.h"
 #include "store.h"
-#include "utility.h"
+#include "util/strings.h"
 #include "zmap/logger.h"
 
 #include "fastjson.h"
@@ -388,6 +388,11 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
     }
 
     void DumpCertificateShardToJSON(size_t shard_id,
+                                    size_t start_shard,
+                                    const HashKey& start,
+                                    size_t stop_shard,
+                                    bool has_stop,
+                                    const HashKey& stop,
                                     std::ofstream& out,
                                     std::mutex& out_mtx,
                                     uint32_t max_records,
@@ -397,8 +402,47 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
         std::unique_ptr<DeltaHandler> to_process_handler =
                 m_delta_ctx->new_certificates_to_process_delta_handler();
         std::time_t now = std::time(nullptr);
-        for (auto it = cert_store.seek_start_of_shard(shard_id);
-             it.valid() && cert_store.shard_for(it->first) == shard_id; ++it) {
+
+        AnonymousStore<HashKey>::iterator it;
+        if (shard_id == start_shard) {
+            it = cert_store.upper_bound(start);
+            std::string hex_start = util::Strings::hex_encode(start.hash);
+            log_debug("admin", "cert dump shard %llu starting at %s", shard_id,
+                      hex_start.c_str());
+        } else {
+            it = cert_store.seek_start_of_shard(shard_id);
+            log_debug("admin", "cert dump shard %llu starting at shard start",
+                      shard_id);
+        }
+
+        std::function<bool(const HashKey&)> continue_iterating;
+        if (has_stop && shard_id == stop_shard) {
+            continue_iterating = [&](const HashKey& k) {
+                bool ok = k < stop;
+                if (!ok) {
+                    std::string stop_hex = util::Strings::hex_encode(k.hash);
+                    log_debug(
+                            "admin",
+                            "cert dump shard %llu stopping at %s: reached stop key",
+                            shard_id, stop_hex.c_str());
+                }
+                return ok;
+            };
+        } else {
+            continue_iterating = [&](const HashKey& k) {
+                bool ok = cert_store.shard_for(k) == shard_id;
+                if (!ok) {
+                    std::string stop_hex = util::Strings::hex_encode(k.hash);
+                    log_debug(
+                            "admin",
+                            "cert dump shard %llu stopping at %s: end of shard",
+                            shard_id, stop_hex.c_str());
+                }
+                return ok;
+            };
+        }
+
+        for (; it.valid() && continue_iterating(it->first); ++it) {
             if (max_records && ++count > max_records) {
                 return;
             }
@@ -446,24 +490,24 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
         }
     }
 
-    void DumpCertificateThread(std::queue<size_t>& shards,
-                               std::mutex& meta_mtx,
+    void DumpCertificateThread(Channel<size_t>* shards_to_process,
+                               size_t start_shard,
+                               const HashKey& start,
+                               size_t stop_shard,
+                               bool has_stop,
+                               const HashKey& stop,
                                std::ofstream& out,
                                std::mutex& out_mtx,
                                uint32_t max_records,
                                std::atomic<std::uint32_t>& count) {
-        while (true) {
-            size_t target_shard;
-            {
-                std::lock_guard<std::mutex> guard(meta_mtx);
-                if (shards.empty()) {
-                    return;
-                }
-                target_shard = shards.front();
-                shards.pop();
-            }
-            DumpCertificateShardToJSON(target_shard, out, out_mtx, max_records,
-                                       count);
+        for (auto it = shards_to_process->range(); it.valid(); ++it) {
+            size_t target_shard = *it;
+            log_debug("admin",
+                      "dump certificate thread starting to process %llu",
+                      target_shard);
+            DumpCertificateShardToJSON(target_shard, start_shard, start,
+                                       stop_shard, has_stop, stop, out, out_mtx,
+                                       max_records, count);
         }
     }
 
@@ -490,28 +534,65 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
         if (request->threads() != 0) {
             num_threads = request->threads();
         }
-        log_debug("admin", "will dump certificates using %u threads",
-                  num_threads);
+        log_info("admin", "will dump certificates using %u threads",
+                 num_threads);
         uint32_t max_records = request->max_records();
         uint32_t start_prefix = request->start_ip();
         uint32_t end_prefix = request->stop_ip();
-        std::atomic<std::uint32_t> count;
-        count = 0;
-        log_debug("admin", "max certificates to dump: %u", max_records);
-        // create thread pool that will process shards in parallel
-        std::queue<size_t> shards;
-        for (size_t i = 0; i < cert_store.total_shards(); i++) {
-            shards.push(i);
+        bool has_stop = end_prefix > 0;
+        HashKey start =
+                HashKey::zero_pad_prefix(start_prefix, HashKey::SHA256_LEN);
+        HashKey stop =
+                HashKey::zero_pad_prefix(end_prefix, HashKey::SHA256_LEN);
+        std::string start_hex = util::Strings::hex_encode(start.hash);
+        log_info("admin", "certificate dump start: %s", start_hex.c_str());
+        if (has_stop) {
+            std::string stop_hex = util::Strings::hex_encode(stop.hash);
+            log_info("admin", "certificate dump stop: %s", stop_hex.c_str());
         }
-        std::mutex meta_mtx;
+
+        // Calculate start and stop shards (inclusive). If we have a stop key,
+        // the stop shard is the shard containing the stop key. If we don't have
+        // a stop key, the stop shard is the last shard.
+        size_t start_shard = cert_store.shard_for(start);
+        size_t stop_shard;
+        if (has_stop) {
+            stop_shard = cert_store.shard_for(stop);
+        } else {
+            stop_shard = cert_store.total_shards() - 1;
+        }
+
+        // We use an atomic integer to keep track of total certificates dumped
+        // across all threads.
+        std::atomic<uint32_t> count(0);
+        if (max_records > 0) {
+            log_info("admin", "max certificates to dump: %u", max_records);
+        }
+
+        // Create the queue of shards to process, read by multiple threads.
+        Channel<size_t> shards_to_process;
+
+        // Start the processing threads.
         std::mutex out_mtx;
         std::vector<std::thread> threads;
         for (uint32_t i = 0; i < num_threads; i++) {
             threads.emplace_back(std::thread(
                     &AdminServiceImpl::DumpCertificateThread, this,
-                    std::ref(shards), std::ref(meta_mtx), std::ref(f),
-                    std::ref(out_mtx), max_records, std::ref(count)));
+                    &shards_to_process, start_shard, start, stop_shard,
+                    has_stop, stop, std::ref(f), std::ref(out_mtx), max_records,
+                    std::ref(count)));
         }
+
+        // Populate the queue of work (shards).
+        for (size_t i = start_shard; i <= stop_shard; ++i) {
+            size_t target_shard = i;
+            log_debug("admin", "adding shard %llu to shards_to_process",
+                      target_shard);
+            shards_to_process.send(std::move(target_shard));
+        }
+        shards_to_process.close();
+
+        // Wait for the threads to finish, then clean up and exit.
         for (auto& t : threads) {
             t.join();
         }

@@ -113,6 +113,7 @@ class AnonymousStore {
         }
 
       public:
+        AnonIterator() = default;
         AnonIterator(const AnonIterator& other) = delete;
         AnonIterator(AnonIterator&& other) = default;
 
@@ -122,6 +123,12 @@ class AnonymousStore {
 
         bool operator!=(const AnonIterator& other) const {
             return !(other == *this);
+        }
+
+        AnonIterator& operator=(AnonIterator&& other) {
+          m_it = std::move(other.m_it);
+          m_current = std::move(other.m_current);
+          return *this;
         }
 
         value_type operator*() const { return m_current; }

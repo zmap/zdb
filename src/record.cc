@@ -19,10 +19,10 @@
 #include <rocksdb/slice.h>
 #include <rocksdb/slice_transform.h>
 
-#include "record.h"
-#include "utility.h"
-#include "search.pb.h"
 #include "protocols.pb.h"
+#include "record.h"
+#include "search.pb.h"
+#include "utility.h"
 
 using namespace zdb;
 using rocksdb::Slice;
@@ -256,6 +256,9 @@ bool DomainKey::operator<(const zdb::DomainKey& rhs) const {
     return false;
 }
 
+// static
+const size_t HashKey::SHA256_LEN = 32;
+
 std::string DomainKey::print() const {
     std::stringstream ss;
     int pretty_port = ntohs(port);
@@ -283,6 +286,17 @@ HashKey HashKey::from_record(const zsearch::Record& r) {
 
 HashKey HashKey::from_record(const zsearch::AnonymousRecord& record) {
     HashKey out{record.sha256fp()};
+    return out;
+}
+
+HashKey HashKey::zero_pad_prefix(uint32_t prefix, size_t length) {
+    static const size_t kMinLength = 4;
+    std::string h(std::max(kMinLength, length), '\0');
+    h[0] = static_cast<char>((prefix >> 24) & 0xFF);
+    h[1] = static_cast<char>((prefix >> 16) & 0xFF);
+    h[2] = static_cast<char>((prefix >> 8) & 0xFF);
+    h[3] = static_cast<char>(prefix & 0xFF);
+    HashKey out{h};
     return out;
 }
 
@@ -315,6 +329,10 @@ std::shared_ptr<const rocksdb::SliceTransform> HashKey::prefix_extractor() {
 
 bool HashKey::operator==(const HashKey& rhs) const {
     return hash == rhs.hash;
+}
+
+bool HashKey::operator<(const HashKey& rhs) const {
+    return hash < rhs.hash;
 }
 
 std::string HashKey::print() const {

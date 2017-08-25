@@ -16,8 +16,8 @@
 #define ZDB_DB_H
 
 #include <functional>
-#include <string>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <rocksdb/db.h>
@@ -95,8 +95,8 @@ class DB {
       public:
         using value_type = typename impl_type::value_type;
 
+        DBIterator() = default;
         DBIterator(std::unique_ptr<impl_type> impl) : m_impl(std::move(impl)) {}
-
         DBIterator(const DBIterator& other) = delete;
         DBIterator(DBIterator&& other) : m_impl(std::move(other.m_impl)) {
             other.m_impl = nullptr;
@@ -108,6 +108,11 @@ class DB {
 
         bool operator!=(const DBIterator& other) const {
             return !(*m_impl == *other.m_impl);
+        }
+
+        DBIterator& operator=(DBIterator&& other) {
+            m_impl = std::move(other.m_impl);
+            return *this;
         }
 
         inline const value_type& operator*() const { return m_impl->get(); }
@@ -125,7 +130,7 @@ class DB {
 
         DBIterator operator++(int) = delete;
 
-        inline bool valid() const { return m_impl->valid(); }
+        inline bool valid() const { return m_impl && m_impl->valid(); }
 
         friend void swap(DBIterator& a, DBIterator& b) {
             using std::swap;
