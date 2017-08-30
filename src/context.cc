@@ -242,13 +242,6 @@ DBContext::DBContext(std::unique_ptr<RocksShardedContext> ipv4_rctx,
         : m_ipv4_rctx(std::move(ipv4_rctx)),
           m_domain_rctx(std::move(domain_rctx)),
           m_certificate_rctx(std::move(certificate_rctx)) {
-    m_ipv4 = db_from_context<IPv4Key, ProtobufRecord<zsearch::Record>>(
-            m_ipv4_rctx.get());
-    m_domain = db_from_context<DomainKey, ProtobufRecord<zsearch::Record>>(
-            m_domain_rctx.get());
-    m_certificate =
-            db_from_context<HashKey, ProtobufRecord<zsearch::AnonymousRecord>>(
-                    m_certificate_rctx.get());
 }
 
 bool DBContext::open_all() {
@@ -264,6 +257,13 @@ bool DBContext::open_all() {
         log_error("context", "could not open certificate rocksdb");
         return false;
     }
+    m_ipv4 = db_from_context<IPv4Key, ProtobufRecord<zsearch::Record>>(
+            m_ipv4_rctx.get());
+    m_domain = db_from_context<DomainKey, ProtobufRecord<zsearch::Record>>(
+            m_domain_rctx.get());
+    m_certificate =
+            db_from_context<HashKey, ProtobufRecord<zsearch::AnonymousRecord>>(
+                    m_certificate_rctx.get());
     return true;
 }
 
