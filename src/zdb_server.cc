@@ -25,14 +25,14 @@
 
 #include <zmap/logger.h>
 
+#include "admin.h"
 #include "as_data.h"
 #include "context.h"
 #include "inbound.h"
+#include "location.h"
 #include "query.h"
 #include "record.h"
 #include "utility.h"
-#include "admin.h"
-#include "location.h"
 
 using namespace zdb;
 
@@ -62,6 +62,7 @@ DEFINE_uint64(admin_port, 8080, "admin server port");
 DEFINE_uint64(query_port, 9090, "query server port");
 
 DEFINE_bool(syslog, false, "whether or not to additionally log to syslog");
+DEFINE_bool(repair, false, "run a repair before opening the databases");
 
 int main(int argc, char* argv[]) {
     zdb::server_state = STATE_OK;
@@ -123,10 +124,27 @@ int main(int argc, char* argv[]) {
         log_fatal("server", "unable to load values from configuration");
     }
 
+    bool run_repair = FLAGS_repair;
     std::unique_ptr<DBContext> db_ctx =
             create_db_context_from_config_values(config_values);
     if (db_ctx == nullptr) {
         log_fatal("server", "unable to load databases");
+    }
+
+    if (!db_ctx->open_all()) {
+      log_error("server", "unable to open databases");
+      if (run_repair) {
+        log_warn("server", "attempting rocksdb repair");
+        if (!db_ctx->repair()) {
+          log_fatal("server", "unable to repair rocksdb");
+        }
+        log_info("server", "repaired rocksdb, opening");
+        if (!db_ctx->open_all()) {
+          log_fatal("server", "could not open rocksdb after repairing");
+        }
+      } else {
+        log_fatal("server", "could not open databases");
+      }
     }
 
     std::unique_ptr<LockContext> lock_context =
@@ -165,8 +183,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::thread> threads;
     for (auto& queue : queues) {
-        log_info("server", "starting %i threads for queue %s to %s", queue.threads,
-                 queue.incoming->topic_name().c_str(),
+        log_info("server", "starting %i threads for queue %s to %s",
+                 queue.threads, queue.incoming->topic_name().c_str(),
                  queue.outgoing->topic_name().c_str());
         for (const auto& handler : queue.handlers) {
             threads.emplace_back(process_inbound, queue.incoming,
@@ -177,8 +195,8 @@ int main(int argc, char* argv[]) {
     // make query and admin servers
     std::shared_ptr<QueryServer> query_server =
             make_query_server(FLAGS_query_port, store_ctx.get());
-    std::shared_ptr<AdminServer> admin_server = make_admin_server(
-            FLAGS_admin_port, store_ctx.get(), &delta_ctx);
+    std::shared_ptr<AdminServer> admin_server =
+            make_admin_server(FLAGS_admin_port, store_ctx.get(), &delta_ctx);
     log_info("server", "launching admin thread bound to port %d",
              FLAGS_admin_port);
     std::thread admin_thread(

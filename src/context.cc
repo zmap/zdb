@@ -107,6 +107,9 @@ RocksSingleContext::RocksSingleContext(const std::string& path)
         : RocksContext(path) {}
 
 bool RocksSingleContext::open() {
+    if (is_open()) {
+        return true;
+    }
     if (shared_options() == nullptr) {
         log_error("rocks_context", "cannot open rocksdb with null options");
         return false;
@@ -120,8 +123,7 @@ bool RocksSingleContext::open() {
 
 bool RocksSingleContext::repair() {
     if (is_open()) {
-        log_error("rocksdb", "database already open");
-        return false;
+        return true;
     }
     rocksdb::Status repair_status =
             rocksdb::RepairDB(path(), *shared_options());
@@ -180,21 +182,26 @@ void RocksShardedContext::set_options(std::shared_ptr<rocksdb::Options> opt) {
 }
 
 bool RocksShardedContext::open() {
+    if (is_open()) {
+        return true;
+    }
     util::Directory::mkdir(path());
+    bool failed = false;
     for (size_t i = 0; i < m_shards.size(); ++i) {
         // Open each shard
         if (!m_shards[i]->open()) {
-            close();
-            return false;
+            failed = true;
         }
     }
-    m_is_open = true;
-    return true;
+    m_is_open = !failed;
+    return m_is_open;
 }
 
 bool RocksShardedContext::repair() {
     for (size_t i = 0; i < m_shards.size(); ++i) {
+        assert(m_shards[i]);
         if (!m_shards[i]->repair()) {
+            log_error("rocksdb", "could not repair %s", m_shards[i]->path().c_str());
             return false;
         }
     }
@@ -242,6 +249,44 @@ DBContext::DBContext(std::unique_ptr<RocksShardedContext> ipv4_rctx,
     m_certificate =
             db_from_context<HashKey, ProtobufRecord<zsearch::AnonymousRecord>>(
                     m_certificate_rctx.get());
+}
+
+bool DBContext::open_all() {
+    if (m_ipv4_rctx && !m_ipv4_rctx->open()) {
+        log_error("context", "could not open ipv4 rocksdb");
+        return false;
+    }
+    if (m_domain_rctx && !m_domain_rctx->open()) {
+        log_error("context", "could not open domain rocksdb");
+        return false;
+    }
+    if (m_certificate_rctx && !m_certificate_rctx->open()) {
+        log_error("context", "could not open certificate rocksdb");
+        return false;
+    }
+    return true;
+}
+
+bool DBContext::repair() {
+    if (m_ipv4_rctx && !m_ipv4_rctx->is_open()) {
+        log_info("context", "repairing ipv4");
+        if (!m_ipv4_rctx->repair()) {
+            return false;
+        }
+    }
+    if (m_domain_rctx && !m_domain_rctx->is_open()) {
+        log_info("context", "repairing domain");
+        if (!m_domain_rctx->repair()) {
+            return false;
+        }
+    }
+    if (m_certificate_rctx && !m_certificate_rctx->is_open()) {
+        log_info("context", "repairing certificate");
+        if (!m_certificate_rctx->repair()) {
+            return false;
+        }
+    }
+    return true;
 }
 
 LockContext::LockContext(size_t ipv4_threads,
@@ -310,8 +355,8 @@ void KafkaContext::connect_enabled(const EnableMap& enabled) {
 DeltaContext::DeltaContext(KafkaContext* kafka_ctx) : m_kafka_ctx(kafka_ctx) {}
 
 std::unique_ptr<DeltaHandler> DeltaContext::new_ipv4_delta_handler() {
-    std::unique_ptr<DeltaHandler> kafka_handler(new KafkaTopicDeltaHandler(
-            m_kafka_ctx->ipv4_deltas()));
+    std::unique_ptr<DeltaHandler> kafka_handler(
+            new KafkaTopicDeltaHandler(m_kafka_ctx->ipv4_deltas()));
     std::unique_ptr<DeltaHandler> handler(
             new GroupingDeltaHandler(GroupingDeltaHandler::GROUP_IP));
     GroupingDeltaHandler* grouping_handler =
@@ -321,8 +366,8 @@ std::unique_ptr<DeltaHandler> DeltaContext::new_ipv4_delta_handler() {
 }
 
 std::unique_ptr<DeltaHandler> DeltaContext::new_domain_delta_handler() {
-    std::unique_ptr<DeltaHandler> kafka_handler(new KafkaTopicDeltaHandler(
-            m_kafka_ctx->domain_deltas()));
+    std::unique_ptr<DeltaHandler> kafka_handler(
+            new KafkaTopicDeltaHandler(m_kafka_ctx->domain_deltas()));
     std::unique_ptr<DeltaHandler> handler(
             new GroupingDeltaHandler(GroupingDeltaHandler::GROUP_DOMAIN));
     GroupingDeltaHandler* grouping_handler =
@@ -353,19 +398,11 @@ std::unique_ptr<DBContext> create_db_context_from_config_values(
         ipv4.reset(new RocksShardedContext(config_values.ipv4.db_path,
                                            kIPv4ShardCount));
         ipv4->set_options(new_ipv4_rocks_options());
-        if (!ipv4->open()) {
-            log_error("context", "could not open ipv4 rocksdb");
-            return nullptr;
-        }
     }
     if (config_values.domain.should_open()) {
         log_info("context", "creating domain context");
         domain.reset(new RocksSingleContext(config_values.domain.db_path));
         domain->set_options(new_domain_rocks_options());
-        if (!domain->open()) {
-            log_error("context", "could not open domain rocksdb");
-            return nullptr;
-        }
     }
     if (config_values.certificate.should_open() ||
         config_values.external_certificate.should_open() ||
@@ -375,10 +412,6 @@ std::unique_ptr<DBContext> create_db_context_from_config_values(
         certificate.reset(new RocksShardedContext(
                 config_values.certificate.db_path, kCertificateShardCount));
         certificate->set_options(new_certificate_rocks_options());
-        if (!certificate->open()) {
-            log_error("context", "could not open certificate rocksdb");
-            return nullptr;
-        }
     }
     std::unique_ptr<DBContext> db(new DBContext(
             std::move(ipv4), std::move(domain), std::move(certificate)));

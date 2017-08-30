@@ -17,8 +17,8 @@
 
 #include <memory>
 
-#include <rocksdb/env.h>
 #include <rocksdb/cache.h>
+#include <rocksdb/env.h>
 
 #include "configuration.h"
 #include "db.h"
@@ -175,6 +175,9 @@ class DBContext : public Context {
               std::unique_ptr<RocksSingleContext> domain_rctx,
               std::unique_ptr<RocksShardedContext> certificate_rctx);
 
+    bool open_all();
+    bool repair();
+
     IPv4DB* ipv4() { return m_ipv4.get(); }
     const IPv4DB* ipv4() const { return m_ipv4.get(); }
 
@@ -258,8 +261,6 @@ class KafkaContext : public Context {
         return m_certificates_to_process.get();
     }
 
-
-
   private:
     // Consumers
     std::unique_ptr<KafkaConsumerConnection> m_ipv4;
@@ -281,8 +282,7 @@ class KafkaContext : public Context {
 };
 
 class DeltaContext : public Context {
-public:
-
+  public:
     DeltaContext(KafkaContext* kafka_ctx);
     virtual ~DeltaContext() = default;
 
@@ -290,8 +290,8 @@ public:
     std::unique_ptr<DeltaHandler> new_domain_delta_handler();
     std::unique_ptr<DeltaHandler> new_certificate_delta_handler();
     std::unique_ptr<DeltaHandler> new_certificates_to_process_delta_handler();
-private:
 
+  private:
     KafkaContext* m_kafka_ctx;
 
     DISALLOW_COPY_ASSIGN(DeltaContext);
