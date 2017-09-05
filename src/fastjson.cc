@@ -304,7 +304,9 @@ void fast_dump_certificate(std::ostream& f,
                            uint32_t added_at,
                            uint32_t updated_at) {
     f << "{";
-    f << "\"raw\":\"" << base64_encode(certificate.raw()) << "\"";
+    f << "\"fingerprint_sha256\":\""
+      << util::Strings::hex_encode(certificate.sha256fp()) << "\"";
+    f << ",\"raw\":\"" << base64_encode(certificate.raw()) << "\"";
     if (certificate.parse_status() == CERTIFICATE_PARSE_STATUS_SUCCESS ||
         (certificate.parse_status() == CERTIFICATE_PARSE_STATUS_RESERVED &&
          certificate.parsed() != "")) {

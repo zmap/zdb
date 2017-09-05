@@ -12,6 +12,7 @@
  * permissions and limitations under the License.
  */
 
+#include <base64/base64.h>
 #include <gtest/gtest.h>
 #include <json/json.h>
 #include <iostream>
@@ -427,6 +428,34 @@ TEST(BuildCertificateTags, UnknownTypeNotInTags) {
         EXPECT_EQ(1, tags.count("unexpired"));
         EXPECT_EQ(1, tags.count("leaf"));
     }
+}
+
+TEST(FastDumpCertificate, FingeprintAndRaw) {
+    zsearch::Certificate c;
+    std::string fp;
+    ASSERT_TRUE(util::Strings::hex_decode(kTestHexSHA256Fp, &fp));
+    c.set_sha256fp(fp);
+    std::string raw = util::Strings::random_bytes(1024);
+    c.set_raw(raw);
+
+    std::ostringstream f;
+    Json::FastWriter w;
+    w.omitEndingLineFeed();
+    std::set<std::string> tags;
+    fast_dump_certificate(f, w, c, tags, 1, 3);
+
+    Json::Reader reader;
+    Json::Value root;
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+
+    const Json::Value& json_fp = root["fingerprint_sha256"];
+    ASSERT_TRUE(json_fp.isString());
+    EXPECT_EQ(kTestHexSHA256Fp, json_fp.asString());
+
+    const Json::Value& json_raw = root["raw"];
+    ASSERT_TRUE(json_raw.isString());
+    EXPECT_EQ(base64_encode(raw), json_raw.asString());
 }
 
 }  // namespace zdb
