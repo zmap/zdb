@@ -20,25 +20,24 @@ using namespace zdb;
 AnonymousResult::AnonymousResult() : success(false) {}
 
 AnonymousResult::AnonymousResult(AnonymousResult&& rhs) : success(rhs.success) {
-    delta.Swap(&rhs.delta);
+  delta.Swap(&rhs.delta);
 }
 
 AnonymousResult& AnonymousResult::operator=(AnonymousResult&& rhs) {
-    success = rhs.success;
-    delta.Swap(&rhs.delta);
-    return *this;
+  success = rhs.success;
+  delta.Swap(&rhs.delta);
+  return *this;
 }
 
 AnonymousResult AnonymousResult::failure() {
-    AnonymousResult out;
-    return out;
+  AnonymousResult out;
+  return out;
 }
 
 AnonymousResult AnonymousResult::no_change() {
-    AnonymousResult out;
-    out.delta.set_delta_type(zsearch::AnonymousDelta_DeltaType_DT_UPDATE);
-    out.delta.set_delta_scope(
-            zsearch::AnonymousDelta_DeltaScope_SCOPE_NO_CHANGE);
-    out.success = true;
-    return out;
+  AnonymousResult out;
+  out.delta.set_delta_type(zsearch::AnonymousDelta_DeltaType_DT_UPDATE);
+  out.delta.set_delta_scope(zsearch::AnonymousDelta_DeltaScope_SCOPE_NO_CHANGE);
+  out.success = true;
+  return out;
 }

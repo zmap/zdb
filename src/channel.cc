@@ -20,18 +20,18 @@ using namespace std;
 WaitGroup::WaitGroup() : m_counter(0) {}
 
 void WaitGroup::add(size_t delta) {
-    m_counter += delta;
+  m_counter += delta;
 }
 
 void WaitGroup::done() {
-    auto previous = m_counter.fetch_sub(1);
-    if (previous == 1) {
-        // Current is now zero, wake everything up
-        m_cv.notify_all();
-    }
+  auto previous = m_counter.fetch_sub(1);
+  if (previous == 1) {
+    // Current is now zero, wake everything up
+    m_cv.notify_all();
+  }
 }
 
 void WaitGroup::wait() {
-    unique_lock<mutex> lock(m_mutex);
-    m_cv.wait(lock, [&]() { return m_counter == 0; });
+  unique_lock<mutex> lock(m_mutex);
+  m_cv.wait(lock, [&]() { return m_counter == 0; });
 }

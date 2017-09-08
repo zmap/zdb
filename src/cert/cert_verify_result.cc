@@ -19,12 +19,12 @@ namespace zdb {
 namespace cert {
 
 bool is_error_status(const CertificateStatus& cert_status) {
-    return cert_status & CERT_STATUS_ALL_ERRORS;
+  return cert_status & CERT_STATUS_ALL_ERRORS;
 }
 
 CertificateVerifyResult::CertificateVerifyResult() = default;
 CertificateVerifyResult::CertificateVerifyResult(
-        const CertificateVerifyResult&) = default;
+    const CertificateVerifyResult&) = default;
 
 }  // namespace cert
 

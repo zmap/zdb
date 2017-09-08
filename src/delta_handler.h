@@ -21,10 +21,10 @@ class StoreResult;
 class AnonymousResult;
 
 class DeltaHandler {
-  public:
-    virtual void handle_delta(const StoreResult& pruned) = 0;
-    virtual void handle_delta(const AnonymousResult& pruned) = 0;
-    virtual ~DeltaHandler() = default;
+ public:
+  virtual void handle_delta(const StoreResult& pruned) = 0;
+  virtual void handle_delta(const AnonymousResult& pruned) = 0;
+  virtual ~DeltaHandler() = default;
 };
 
 }  // namespace zdb

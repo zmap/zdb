@@ -21,10 +21,10 @@
 #include <zmap/logger.h>
 
 int main(int argc, char** argv) {
-    OpenSSL_add_all_algorithms();
-    if (log_init(stderr, ZLOG_TRACE, 0, NULL)) {
-        return EXIT_FAILURE;
-    }
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+  OpenSSL_add_all_algorithms();
+  if (log_init(stderr, ZLOG_TRACE, 0, NULL)) {
+    return EXIT_FAILURE;
+  }
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }

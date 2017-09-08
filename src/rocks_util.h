@@ -25,8 +25,8 @@
 namespace zdb {
 
 std::shared_ptr<rocksdb::Options> new_rocks_options(
-        rocksdb::Env* env,
-        std::shared_ptr<rocksdb::Cache> cache);
+    rocksdb::Env* env,
+    std::shared_ptr<rocksdb::Cache> cache);
 
 std::shared_ptr<rocksdb::Options> new_ipv4_rocks_options();
 

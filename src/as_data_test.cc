@@ -32,67 +32,67 @@ const std::string kAlsoValidPath = kASPrefix + "/also_valid_ases.json";
 const std::string kMissingPath = kASPrefix + "/not-real-file.json";
 
 TEST(ASTreeTest, LoadJSON) {
-    {
-        ASTree tree_missing;
-        std::ifstream as_stream(kMissingPath);
-        EXPECT_FALSE(tree_missing.load_json(as_stream));
-        EXPECT_EQ(0U, tree_missing.size());
-    }
-    {
-        ASTree tree_valid;
-        std::ifstream as_stream(kValidPath);
-        EXPECT_TRUE(tree_valid.load_json(as_stream));
-        EXPECT_EQ(10U, tree_valid.size());
-    }
+  {
+    ASTree tree_missing;
+    std::ifstream as_stream(kMissingPath);
+    EXPECT_FALSE(tree_missing.load_json(as_stream));
+    EXPECT_EQ(0U, tree_missing.size());
+  }
+  {
+    ASTree tree_valid;
+    std::ifstream as_stream(kValidPath);
+    EXPECT_TRUE(tree_valid.load_json(as_stream));
+    EXPECT_EQ(10U, tree_valid.size());
+  }
 }
 
 TEST(ASTreeTest, ReloadJSON) {
-    ASTree tree;
-    ASTree::Handle h = tree.get_handle();
+  ASTree tree;
+  ASTree::Handle h = tree.get_handle();
 
-    std::ifstream first(kValidPath);
-    EXPECT_TRUE(tree.load_json(first));
-    EXPECT_EQ(10U, tree.size());
+  std::ifstream first(kValidPath);
+  EXPECT_TRUE(tree.load_json(first));
+  EXPECT_EQ(10U, tree.size());
 
-    ASTree::Lookup missing = h["97.90.0.0/19"];
-    EXPECT_FALSE(missing.found);
-    EXPECT_FALSE(missing.exact);
+  ASTree::Lookup missing = h["97.90.0.0/19"];
+  EXPECT_FALSE(missing.found);
+  EXPECT_FALSE(missing.exact);
 
-    std::ifstream second(kAlsoValidPath);
-    EXPECT_TRUE(tree.load_json(second));
-    EXPECT_EQ(10U, tree.size());
+  std::ifstream second(kAlsoValidPath);
+  EXPECT_TRUE(tree.load_json(second));
+  EXPECT_EQ(10U, tree.size());
 
-    ASTree::Lookup added = h["97.90.0.0/19"];
-    EXPECT_TRUE(added.found);
-    EXPECT_TRUE(added.exact);
-    EXPECT_EQ("97.90.0.0/19", added.as_atom.bgp_prefix());
+  ASTree::Lookup added = h["97.90.0.0/19"];
+  EXPECT_TRUE(added.found);
+  EXPECT_TRUE(added.exact);
+  EXPECT_EQ("97.90.0.0/19", added.as_atom.bgp_prefix());
 }
 
 TEST(ASTreeTest, HandleLookup) {
-    ASTree tree;
-    ASTree::Handle h = tree.get_handle();
+  ASTree tree;
+  ASTree::Handle h = tree.get_handle();
 
-    std::ifstream as_stream(kValidPath);
-    ASSERT_TRUE(tree.load_json(as_stream));
+  std::ifstream as_stream(kValidPath);
+  ASSERT_TRUE(tree.load_json(as_stream));
 
-    ASTree::Lookup missing = h["1.2.3.4"];
-    EXPECT_FALSE(missing.found);
-    EXPECT_FALSE(missing.exact);
+  ASTree::Lookup missing = h["1.2.3.4"];
+  EXPECT_FALSE(missing.found);
+  EXPECT_FALSE(missing.exact);
 
-    ASTree::Lookup inner = h["91.242.136.1"];
-    EXPECT_TRUE(inner.found);
-    EXPECT_FALSE(inner.exact);
-    EXPECT_EQ("91.242.136.0/24", inner.as_atom.bgp_prefix());
+  ASTree::Lookup inner = h["91.242.136.1"];
+  EXPECT_TRUE(inner.found);
+  EXPECT_FALSE(inner.exact);
+  EXPECT_EQ("91.242.136.0/24", inner.as_atom.bgp_prefix());
 
-    ASTree::Lookup outer = h["91.242.137.1"];
-    EXPECT_EQ("91.242.136.0/22", outer.as_atom.bgp_prefix());
-    EXPECT_TRUE(inner.found);
-    EXPECT_FALSE(inner.exact);
+  ASTree::Lookup outer = h["91.242.137.1"];
+  EXPECT_EQ("91.242.136.0/22", outer.as_atom.bgp_prefix());
+  EXPECT_TRUE(inner.found);
+  EXPECT_FALSE(inner.exact);
 
-    ASTree::Lookup cidr = h["185.60.25.0/24"];
-    EXPECT_TRUE(cidr.found);
-    EXPECT_TRUE(cidr.exact);
-    EXPECT_EQ("185.60.25.0/24", cidr.as_atom.bgp_prefix());
+  ASTree::Lookup cidr = h["185.60.25.0/24"];
+  EXPECT_TRUE(cidr.found);
+  EXPECT_TRUE(cidr.exact);
+  EXPECT_EQ("185.60.25.0/24", cidr.as_atom.bgp_prefix());
 }
 
 }  // namespace

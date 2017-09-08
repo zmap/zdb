@@ -12,25 +12,25 @@
  * permissions and limitations under the License.
  */
 
-#include "zmap/logger.h"
-#include "protocols.pb.h"
 #include <algorithm>
+#include "protocols.pb.h"
+#include "zmap/logger.h"
 
 using namespace zsearch;
 
 namespace zdb {
 
 std::string get_proto_name(int proto) {
-    std::string s = Protocol_Name(static_cast<Protocol>(proto)).substr(6);
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    return s;
+  std::string s = Protocol_Name(static_cast<Protocol>(proto)).substr(6);
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
 }
 
 std::string get_subproto_name(int proto, int subproto) {
-    std::string s =
-            Subprotocol_Name(static_cast<Subprotocol>(subproto)).substr(9);
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-    return s;
+  std::string s =
+      Subprotocol_Name(static_cast<Subprotocol>(subproto)).substr(9);
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
 }
 
 }  // namespace zdb

@@ -18,17 +18,17 @@
 #include <memory>
 #include <string>
 
-#include "zsearch_definitions/anonstore.pb.h"
 #include "cert/x509_certificate.h"
+#include "zsearch_definitions/anonstore.pb.h"
 
 namespace zdb {
 
 namespace cert {
 
 struct Anchor {
-    zsearch::CertificateType cert_type = zsearch::CERTIFICATE_TYPE_ROOT;
-    bool trusted = false;
-    std::shared_ptr<X509Certificate> certificate;
+  zsearch::CertificateType cert_type = zsearch::CERTIFICATE_TYPE_ROOT;
+  bool trusted = false;
+  std::shared_ptr<X509Certificate> certificate;
 };
 
 }  // namespace cert
@@ -39,14 +39,14 @@ namespace std {
 
 template <>
 struct less<::zdb::cert::Anchor> {
-    using result_type = bool;
-    using first_argument_type = ::zdb::cert::Anchor;
-    using second_argument_type = first_argument_type;
+  using result_type = bool;
+  using first_argument_type = ::zdb::cert::Anchor;
+  using second_argument_type = first_argument_type;
 
-    bool operator()(const first_argument_type& lhs,
-                    const second_argument_type& rhs) const {
-        return lhs.certificate < rhs.certificate;
-    }
+  bool operator()(const first_argument_type& lhs,
+                  const second_argument_type& rhs) const {
+    return lhs.certificate < rhs.certificate;
+  }
 };
 
 }  // namespace std

@@ -23,8 +23,8 @@ namespace zdb {
 
 template <typename T>
 struct deserialize {
-    using value_type = T;
-    value_type operator()(const std::string& t) const;
+  using value_type = T;
+  value_type operator()(const std::string& t) const;
 };
 
 }  // namespace zdb

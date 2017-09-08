@@ -21,9 +21,9 @@ class StoreResult;
 class AnonymousResult;
 
 class PruneHandler {
-  public:
-    virtual void handle_pruned(const StoreResult& pruned) = 0;
-    virtual void handle_pruned(const AnonymousResult& pruned) = 0;
+ public:
+  virtual void handle_pruned(const StoreResult& pruned) = 0;
+  virtual void handle_pruned(const AnonymousResult& pruned) = 0;
 };
 
 }  // namespace zdb

@@ -30,49 +30,46 @@ namespace zdb {
 namespace cert {
 
 class CertPool {
-  public:
-    CertPool();
-    ~CertPool();
+ public:
+  CertPool();
+  ~CertPool();
 
-    void add_cert(std::shared_ptr<X509Certificate> cert);
+  void add_cert(std::shared_ptr<X509Certificate> cert);
 
-    std::shared_ptr<X509Certificate> has_cert(
-            const std::shared_ptr<X509Certificate>& cert) const;
-    std::shared_ptr<X509Certificate> has_cert(
-            const SHA256Fingerprint& fp) const;
+  std::shared_ptr<X509Certificate> has_cert(
+      const std::shared_ptr<X509Certificate>& cert) const;
+  std::shared_ptr<X509Certificate> has_cert(const SHA256Fingerprint& fp) const;
 
-    size_t size() const { return m_certs.size(); }
+  size_t size() const { return m_certs.size(); }
 
-    CertSet with_subject(const std::string& subject) const;
+  CertSet with_subject(const std::string& subject) const;
 
-  private:
-    CertSet m_certs;
-    std::map<std::string, CertSet> m_subjects;
-    std::map<SHA256Fingerprint, std::shared_ptr<X509Certificate>>
-            m_fingerprints;
+ private:
+  CertSet m_certs;
+  std::map<std::string, CertSet> m_subjects;
+  std::map<SHA256Fingerprint, std::shared_ptr<X509Certificate>> m_fingerprints;
 };
 
 class CertStore {
-  public:
-    CertStore();
-    virtual ~CertStore();
+ public:
+  CertStore();
+  virtual ~CertStore();
 
-    void add_root(std::shared_ptr<X509Certificate> cert);
-    void add_intermediate(std::shared_ptr<X509Certificate> cert);
+  void add_root(std::shared_ptr<X509Certificate> cert);
+  void add_intermediate(std::shared_ptr<X509Certificate> cert);
 
-    size_t root_size() const { return m_roots.size(); }
-    size_t intermediate_size() const { return m_intermediates.size(); }
+  size_t root_size() const { return m_roots.size(); }
+  size_t intermediate_size() const { return m_intermediates.size(); }
 
-    CertificateVerifyResult verify_certificate(
-            std::shared_ptr<X509Certificate> cert);
+  CertificateVerifyResult verify_certificate(
+      std::shared_ptr<X509Certificate> cert);
 
-  private:
-    CertSet find_parents(const std::shared_ptr<X509Certificate>&) const;
-    void make_chains(std::shared_ptr<X509Certificate> cert,
-                     CertSet* seen_before);
+ private:
+  CertSet find_parents(const std::shared_ptr<X509Certificate>&) const;
+  void make_chains(std::shared_ptr<X509Certificate> cert, CertSet* seen_before);
 
-    CertPool m_roots;
-    CertPool m_intermediates;
+  CertPool m_roots;
+  CertPool m_intermediates;
 };
 
 }  // namespace cert

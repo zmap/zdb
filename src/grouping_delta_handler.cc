@@ -19,50 +19,50 @@ namespace zdb {
 
 GroupingDeltaHandler::GroupingDeltaHandler() = default;
 GroupingDeltaHandler::GroupingDeltaHandler(GroupOn group_target)
-        : m_group_target(group_target) {}
+    : m_group_target(group_target) {}
 
 GroupingDeltaHandler::~GroupingDeltaHandler() {
-    do_prune();
+  do_prune();
 }
 
 void GroupingDeltaHandler::handle_delta(const StoreResult& res) {
-    switch (m_group_target) {
-        case GROUP_IP:
-            if (res.delta.ip() != m_ip) {
-                do_prune();
-                m_ip = res.delta.ip();
-            }
-            break;
-        case GROUP_DOMAIN:
-            if (res.delta.domain() != m_domain) {
-                do_prune();
-                m_domain = res.delta.domain();
-            }
-            break;
-        default:
-            assert(false);
-            break;
-    }
+  switch (m_group_target) {
+    case GROUP_IP:
+      if (res.delta.ip() != m_ip) {
+        do_prune();
+        m_ip = res.delta.ip();
+      }
+      break;
+    case GROUP_DOMAIN:
+      if (res.delta.domain() != m_domain) {
+        do_prune();
+        m_domain = res.delta.domain();
+      }
+      break;
+    default:
+      assert(false);
+      break;
+  }
 
-    if (res.delta.delta_type() == zsearch::DeltaType::DT_NO_CHANGE) {
-        return;
-    }
-    m_latest = res;
-    m_have_latest = true;
+  if (res.delta.delta_type() == zsearch::DeltaType::DT_NO_CHANGE) {
+    return;
+  }
+  m_latest = res;
+  m_have_latest = true;
 }
 
 void GroupingDeltaHandler::handle_delta(const AnonymousResult& res) {
-    assert(m_impl);
-    m_impl->handle_delta(res);
+  assert(m_impl);
+  m_impl->handle_delta(res);
 }
 
 void GroupingDeltaHandler::do_prune() {
-    if (!m_have_latest) {
-        return;
-    }
-    assert(m_impl);
-    m_impl->handle_delta(m_latest);
-    m_have_latest = false;
+  if (!m_have_latest) {
+    return;
+  }
+  assert(m_impl);
+  m_impl->handle_delta(m_latest);
+  m_have_latest = false;
 }
 
 };  // namespace zdb

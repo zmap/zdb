@@ -31,35 +31,35 @@ namespace {
 const std::string kCertPathPrefix = "./src/test/data/";
 const std::string kLERootCertificatePath = kCertPathPrefix + "isrgrootx1.pem";
 const std::string kLEIntermediatePath =
-        kCertPathPrefix + "lets-encrypt-x3-cross-signed.pem";
+    kCertPathPrefix + "lets-encrypt-x3-cross-signed.pem";
 
 const std::string kDavidAdrianOrgHashHex =
-        "4ce6f5464d355cabbedd60c29d2913f4c07fb3452f1c7bf9e6ce6c60c0917d9a";
+    "4ce6f5464d355cabbedd60c29d2913f4c07fb3452f1c7bf9e6ce6c60c0917d9a";
 const std::string kDavidAdrianOrgPath = kCertPathPrefix + "davidadrian.org.pem";
 
 const std::string kSelfSignedECDSA256Path =
-        kCertPathPrefix + "self-signed-ecdsa-256.pem";
+    kCertPathPrefix + "self-signed-ecdsa-256.pem";
 
 }  // namespace
 
 class CertStoreLetsEncryptTest : public ::testing::Test {
-  public:
-    void SetUp() {
-        std::shared_ptr<X509Certificate> root =
-                X509Certificate_from_PEM(kLERootCertificatePath);
-        ASSERT_NE(nullptr, root);
-        m_store.add_root(root);
-        EXPECT_EQ(1, m_store.root_size());
+ public:
+  void SetUp() {
+    std::shared_ptr<X509Certificate> root =
+        X509Certificate_from_PEM(kLERootCertificatePath);
+    ASSERT_NE(nullptr, root);
+    m_store.add_root(root);
+    EXPECT_EQ(1, m_store.root_size());
 
-        std::shared_ptr<X509Certificate> intermediate =
-                X509Certificate_from_PEM(kLEIntermediatePath);
-        ASSERT_NE(nullptr, root);
-        m_store.add_intermediate(intermediate);
-        EXPECT_EQ(1, m_store.intermediate_size());
-    }
+    std::shared_ptr<X509Certificate> intermediate =
+        X509Certificate_from_PEM(kLEIntermediatePath);
+    ASSERT_NE(nullptr, root);
+    m_store.add_intermediate(intermediate);
+    EXPECT_EQ(1, m_store.intermediate_size());
+  }
 
-  protected:
-    CertStore m_store;
+ protected:
+  CertStore m_store;
 };
 
 #if 0

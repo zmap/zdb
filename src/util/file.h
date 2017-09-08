@@ -26,42 +26,42 @@ namespace zdb {
 namespace util {
 
 enum class FileType {
-    UNKNOWN,
-    FILE,
-    DIRECTORY,
+  UNKNOWN,
+  FILE,
+  DIRECTORY,
 };
 
 struct DirectoryEntry {
-    DirectoryEntry() = default;
-    DirectoryEntry(const std::string& name_, FileType file_type_);
-    DirectoryEntry(const DirectoryEntry&) = default;
+  DirectoryEntry() = default;
+  DirectoryEntry(const std::string& name_, FileType file_type_);
+  DirectoryEntry(const DirectoryEntry&) = default;
 
-    std::string name;
-    FileType file_type = FileType::UNKNOWN;
+  std::string name;
+  FileType file_type = FileType::UNKNOWN;
 
-    bool operator==(const DirectoryEntry& other) const;
+  bool operator==(const DirectoryEntry& other) const;
 };
 
 class Directory {
-  public:
-    Directory();
-    bool open(const std::string& path);
-    std::vector<DirectoryEntry> entries();
+ public:
+  Directory();
+  bool open(const std::string& path);
+  std::vector<DirectoryEntry> entries();
 
-    bool rm(const DirectoryEntry& d);
-    bool rmdir();
+  bool rm(const DirectoryEntry& d);
+  bool rmdir();
 
-    const std::string& path() const { return m_path; }
+  const std::string& path() const { return m_path; }
 
-    static const int MODE_755;
-    static bool mkdir(const std::string& path, int mode = MODE_755);
-    static bool exists(const std::string& path);
+  static const int MODE_755;
+  static bool mkdir(const std::string& path, int mode = MODE_755);
+  static bool exists(const std::string& path);
 
-    ~Directory();
+  ~Directory();
 
-  private:
-    DIR* m_dir = nullptr;
-    std::string m_path;
+ private:
+  DIR* m_dir = nullptr;
+  std::string m_path;
 };
 
 }  // namespace util

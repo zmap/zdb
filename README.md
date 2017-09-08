@@ -47,3 +47,6 @@ $ tools/linux/premake5 gmake
 $ make
 ```
 
+### Developing
+
+ZDB follows the Chromium style-guide. We provide a [configuration file](/.clang-format) for `clang-format`.

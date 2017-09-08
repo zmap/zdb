@@ -25,16 +25,16 @@ namespace zdb {
 namespace cert {
 
 struct SHA256Fingerprint {
-    SHA256Fingerprint();
-    ~SHA256Fingerprint();
-    SHA256Fingerprint(const SHA256Fingerprint& fp);
+  SHA256Fingerprint();
+  ~SHA256Fingerprint();
+  SHA256Fingerprint(const SHA256Fingerprint& fp);
 
-    SHA256Fingerprint& operator=(const SHA256Fingerprint& fp);
+  SHA256Fingerprint& operator=(const SHA256Fingerprint& fp);
 
-    static const size_t SIZE = 32;
-    uint8_t data[SIZE];
+  static const size_t SIZE = 32;
+  uint8_t data[SIZE];
 
-    static bool from_hex_string(const std::string& hex, SHA256Fingerprint* out);
+  static bool from_hex_string(const std::string& hex, SHA256Fingerprint* out);
 };
 
 bool operator<(const SHA256Fingerprint& a, const SHA256Fingerprint& b);

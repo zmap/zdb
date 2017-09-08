@@ -22,103 +22,103 @@
 namespace zdb {
 
 struct KafkaResult {
-    enum class Status {
-        OK,
-        WOULD_BLOCK,
-        ERROR,
-    };
-    Status status = Status::ERROR;
-    std::string data;
-    std::string error;
+  enum class Status {
+    OK,
+    WOULD_BLOCK,
+    ERROR,
+  };
+  Status status = Status::ERROR;
+  std::string data;
+  std::string error;
 
-    KafkaResult();
-    KafkaResult(const KafkaResult&);
-    KafkaResult(KafkaResult&&);
-    ~KafkaResult();
+  KafkaResult();
+  KafkaResult(const KafkaResult&);
+  KafkaResult(KafkaResult&&);
+  ~KafkaResult();
 
-    KafkaResult& operator=(const KafkaResult&);
+  KafkaResult& operator=(const KafkaResult&);
 };
 
 enum class KafkaClientType {
-    UNKNOWN,
-    PRODUCER,
-    CONSUMER,
+  UNKNOWN,
+  PRODUCER,
+  CONSUMER,
 };
 
 class KafkaConnection {
-  public:
-    KafkaConnection();
+ public:
+  KafkaConnection();
 
-    bool connect(const std::string& brokers,
-                 const std::string& topic,
-                 const std::string& client_id);
+  bool connect(const std::string& brokers,
+               const std::string& topic,
+               const std::string& client_id);
 
-    bool connected() const { return m_connected; };
+  bool connected() const { return m_connected; };
 
-    virtual KafkaClientType client_type() const = 0;
+  virtual KafkaClientType client_type() const = 0;
 
-    const std::string& topic_name() const { return m_topic_name; }
+  const std::string& topic_name() const { return m_topic_name; }
 
-    virtual ~KafkaConnection();
+  virtual ~KafkaConnection();
 
-  protected:
-    RdKafka::Conf* m_conf = nullptr;
-    RdKafka::Conf* m_tconf = nullptr;
+ protected:
+  RdKafka::Conf* m_conf = nullptr;
+  RdKafka::Conf* m_tconf = nullptr;
 
-    void delete_conf_objects();
+  void delete_conf_objects();
 
-  private:
-    virtual bool connect_impl(const std::string& brokers,
-                              const std::string& topic,
-                              const std::string& client_id) = 0;
+ private:
+  virtual bool connect_impl(const std::string& brokers,
+                            const std::string& topic,
+                            const std::string& client_id) = 0;
 
-    std::string m_topic_name;
-    bool m_connected = false;
+  std::string m_topic_name;
+  bool m_connected = false;
 
-    KafkaConnection(const KafkaConnection&) = delete;
+  KafkaConnection(const KafkaConnection&) = delete;
 };
 
 class KafkaConsumerConnection : public KafkaConnection {
-  public:
-    KafkaConsumerConnection();
-    ~KafkaConsumerConnection();
+ public:
+  KafkaConsumerConnection();
+  ~KafkaConsumerConnection();
 
-    KafkaClientType client_type() const override {
-        return KafkaClientType::CONSUMER;
-    }
+  KafkaClientType client_type() const override {
+    return KafkaClientType::CONSUMER;
+  }
 
-    KafkaResult consume();
+  KafkaResult consume();
 
-  private:
-    virtual bool connect_impl(const std::string& brokers,
-                              const std::string& topic,
-                              const std::string& client_id) override;
+ private:
+  virtual bool connect_impl(const std::string& brokers,
+                            const std::string& topic,
+                            const std::string& client_id) override;
 
-    RdKafka::KafkaConsumer* m_consumer = nullptr;
-    RdKafka::Topic* m_topic = nullptr;
+  RdKafka::KafkaConsumer* m_consumer = nullptr;
+  RdKafka::Topic* m_topic = nullptr;
 
-    KafkaConsumerConnection(const KafkaConsumerConnection&) = delete;
+  KafkaConsumerConnection(const KafkaConsumerConnection&) = delete;
 };
 
 class KafkaProducerConnection : public KafkaConnection {
-  public:
-    KafkaProducerConnection();
-    ~KafkaProducerConnection();
+ public:
+  KafkaProducerConnection();
+  ~KafkaProducerConnection();
 
-    KafkaClientType client_type() const override {
-        return KafkaClientType::PRODUCER;
-    }
+  KafkaClientType client_type() const override {
+    return KafkaClientType::PRODUCER;
+  }
 
-    KafkaResult produce(const std::string& msg);
-    KafkaResult produce_blocking(const std::string& msg, size_t max_attempts);
+  KafkaResult produce(const std::string& msg);
+  KafkaResult produce_blocking(const std::string& msg, size_t max_attempts);
 
-  private:
-    virtual bool connect_impl(const std::string& brokers,
-                              const std::string& topic,
-                              const std::string& client_id) override;
+ private:
+  virtual bool connect_impl(const std::string& brokers,
+                            const std::string& topic,
+                            const std::string& client_id) override;
 
-    RdKafka::Producer* m_producer = nullptr;
-    RdKafka::Topic* m_topic = nullptr;
+  RdKafka::Producer* m_producer = nullptr;
+  RdKafka::Topic* m_topic = nullptr;
 };
 
 }  // namespace zdb

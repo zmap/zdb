@@ -22,36 +22,36 @@
 namespace zdb {
 
 class GroupingDeltaHandler : public DeltaHandler {
-  public:
-    enum GroupOn {
-        GROUP_IP,
-        GROUP_DOMAIN,
-    };
+ public:
+  enum GroupOn {
+    GROUP_IP,
+    GROUP_DOMAIN,
+  };
 
-    GroupingDeltaHandler();
-    GroupingDeltaHandler(GroupOn group_target);
-    ~GroupingDeltaHandler();
+  GroupingDeltaHandler();
+  GroupingDeltaHandler(GroupOn group_target);
+  ~GroupingDeltaHandler();
 
-    void handle_delta(const StoreResult& res) override;
-    void handle_delta(const AnonymousResult& res) override;
+  void handle_delta(const StoreResult& res) override;
+  void handle_delta(const AnonymousResult& res) override;
 
-    void set_underlying_handler(std::unique_ptr<DeltaHandler> impl) {
-        m_impl = std::move(impl);
-    }
+  void set_underlying_handler(std::unique_ptr<DeltaHandler> impl) {
+    m_impl = std::move(impl);
+  }
 
-  private:
-    void do_prune();
+ private:
+  void do_prune();
 
-    GroupOn m_group_target = GROUP_IP;
+  GroupOn m_group_target = GROUP_IP;
 
-    uint32_t m_ip = 0;
-    std::string m_domain;
+  uint32_t m_ip = 0;
+  std::string m_domain;
 
-    std::unique_ptr<DeltaHandler> m_impl = nullptr;
-    bool m_have_latest = false;
-    StoreResult m_latest;
+  std::unique_ptr<DeltaHandler> m_impl = nullptr;
+  bool m_have_latest = false;
+  StoreResult m_latest;
 
-    DISALLOW_COPY_ASSIGN(GroupingDeltaHandler);
+  DISALLOW_COPY_ASSIGN(GroupingDeltaHandler);
 };
 
 }  // namespace zdb

@@ -14,8 +14,8 @@
 
 #include "util/file.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "defer.h"
@@ -26,90 +26,90 @@ namespace zdb {
 namespace util {
 
 DirectoryEntry::DirectoryEntry(const std::string& name_, FileType file_type_)
-        : name(name_), file_type(file_type_) {}
+    : name(name_), file_type(file_type_) {}
 
 bool DirectoryEntry::operator==(const DirectoryEntry& other) const {
-    return name == other.name && file_type == other.file_type;
+  return name == other.name && file_type == other.file_type;
 }
 
 Directory::Directory() = default;
 
 bool Directory::open(const std::string& path) {
-    // If we already have an open directory, don't open another.
-    if (m_dir) {
-        return false;
-    }
-
-    m_dir = opendir(path.c_str());
-    if (m_dir) {
-        m_path = path;
-        return true;
-    }
+  // If we already have an open directory, don't open another.
+  if (m_dir) {
     return false;
+  }
+
+  m_dir = opendir(path.c_str());
+  if (m_dir) {
+    m_path = path;
+    return true;
+  }
+  return false;
 }
 
 std::vector<DirectoryEntry> Directory::entries() {
-    // If we haven't opened a directory, return an empty vector.
-    if (m_dir == nullptr) {
-        return std::vector<DirectoryEntry>();
-    }
+  // If we haven't opened a directory, return an empty vector.
+  if (m_dir == nullptr) {
+    return std::vector<DirectoryEntry>();
+  }
 
-    // Reset the directory pointer when done
-    long start = telldir(m_dir);
-    auto reset_dirp =
-            defer([](DIR* d, long idx) { seekdir(d, idx); }, m_dir, start);
+  // Reset the directory pointer when done
+  long start = telldir(m_dir);
+  auto reset_dirp =
+      defer([](DIR* d, long idx) { seekdir(d, idx); }, m_dir, start);
 
-    // Iterate over every file in the directory using `readdir()`, and record
-    // the results in `out`.
-    struct dirent* de;
-    std::vector<DirectoryEntry> out;
-    while ((de = readdir(m_dir)) != nullptr) {
-        DirectoryEntry entry;
+  // Iterate over every file in the directory using `readdir()`, and record
+  // the results in `out`.
+  struct dirent* de;
+  std::vector<DirectoryEntry> out;
+  while ((de = readdir(m_dir)) != nullptr) {
+    DirectoryEntry entry;
 #ifdef OS_MAC
-        entry.name = std::string(de->d_name, de->d_namlen);
+    entry.name = std::string(de->d_name, de->d_namlen);
 #else
-        entry.name = std::string(de->d_name);
+    entry.name = std::string(de->d_name);
 #endif
 
-        // Ignore "." and ".." entries
-        if (entry.name == "." || entry.name == "..") {
-            continue;
-        }
-
-        std::string full_path = m_path + "/" + entry.name;
-
-        struct stat path_stat;
-        lstat(full_path.c_str(), &path_stat);
-        if (S_ISREG(path_stat.st_mode)) {
-            entry.file_type = FileType::FILE;
-        } else if (S_ISDIR(path_stat.st_mode)) {
-            entry.file_type = FileType::DIRECTORY;
-        } else {
-            entry.file_type = FileType::UNKNOWN;
-        }
-
-        // Add the entry to the output list
-        out.push_back(entry);
+    // Ignore "." and ".." entries
+    if (entry.name == "." || entry.name == "..") {
+      continue;
     }
-    return out;
+
+    std::string full_path = m_path + "/" + entry.name;
+
+    struct stat path_stat;
+    lstat(full_path.c_str(), &path_stat);
+    if (S_ISREG(path_stat.st_mode)) {
+      entry.file_type = FileType::FILE;
+    } else if (S_ISDIR(path_stat.st_mode)) {
+      entry.file_type = FileType::DIRECTORY;
+    } else {
+      entry.file_type = FileType::UNKNOWN;
+    }
+
+    // Add the entry to the output list
+    out.push_back(entry);
+  }
+  return out;
 }
 
 bool Directory::rm(const DirectoryEntry& e) {
-    if (e.file_type != FileType::FILE) {
-        return false;
-    }
-    std::string full_path = m_path + "/" + e.name;
-    int res = unlink(full_path.c_str());
-    return res == 0;
+  if (e.file_type != FileType::FILE) {
+    return false;
+  }
+  std::string full_path = m_path + "/" + e.name;
+  int res = unlink(full_path.c_str());
+  return res == 0;
 }
 
 bool Directory::rmdir() {
-    if (m_dir) {
-        closedir(m_dir);
-        m_dir = nullptr;
-    }
-    int res = ::rmdir(m_path.c_str());
-    return res == 0;
+  if (m_dir) {
+    closedir(m_dir);
+    m_dir = nullptr;
+  }
+  int res = ::rmdir(m_path.c_str());
+  return res == 0;
 }
 
 // static
@@ -117,15 +117,15 @@ const int Directory::MODE_755 = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 
 // static
 bool Directory::mkdir(const std::string& path, int mode) {
-    int res = ::mkdir(path.c_str(), mode);
-    return res == 0;
+  int res = ::mkdir(path.c_str(), mode);
+  return res == 0;
 }
 
 Directory::~Directory() {
-    if (m_dir) {
-        closedir(m_dir);
-        m_dir = nullptr;
-    }
+  if (m_dir) {
+    closedir(m_dir);
+    m_dir = nullptr;
+  }
 }
 
 }  // namespace util

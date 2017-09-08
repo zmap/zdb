@@ -32,21 +32,21 @@
 namespace zdb {
 
 struct InboundResult {
-    bool success;
-    std::string serialized;
+  bool success;
+  std::string serialized;
 };
 
 class InboundHandler {
-  public:
-    virtual InboundResult handle(const std::string& serialized) = 0;
+ public:
+  virtual InboundResult handle(const std::string& serialized) = 0;
 };
 
 struct InboundOptions {
-    size_t threads;
-    size_t thread_id_offset;
-    std::vector<std::unique_ptr<InboundHandler>> handlers;
-    KafkaConsumerConnection* incoming;
-    KafkaProducerConnection* outgoing;
+  size_t threads;
+  size_t thread_id_offset;
+  std::vector<std::unique_ptr<InboundHandler>> handlers;
+  KafkaConsumerConnection* incoming;
+  KafkaProducerConnection* outgoing;
 };
 
 std::vector<InboundOptions> configure_inbound(ConfigValues* config_values,

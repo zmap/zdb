@@ -21,7 +21,7 @@
 #include "search.grpc.pb.h"
 
 std::set<std::string> build_certificate_tags_from_record(
-        const zsearch::AnonymousRecord& rec);
+    const zsearch::AnonymousRecord& rec);
 
 void fast_dump_ipv4_host(std::ostream& f,
                          uint32_t ip,
@@ -56,20 +56,20 @@ void fast_dump_ct(std::ostream& f, const zsearch::CTStatus& cts);
 void fast_dump_zlint(std::ostream& f, const zsearch::ZLint zlint);
 
 std::string dump_certificate_to_json_string(
-        const zsearch::AnonymousRecord& rec);
+    const zsearch::AnonymousRecord& rec);
 
 void fast_dump_repeated_bytes(
-        std::ostream& f,
-        const google::protobuf::RepeatedPtrField<std::string>& sha256fps);
+    std::ostream& f,
+    const google::protobuf::RepeatedPtrField<std::string>& sha256fps);
 
 void fast_dump_path(std::ostream& f, const zsearch::Path& path);
 
 void fast_dump_root_store_status(
-        std::ostream& f,
-        const zsearch::RootStoreStatus& rootStoreStatus);
+    std::ostream& f,
+    const zsearch::RootStoreStatus& rootStoreStatus);
 
 void fast_dump_validation(
-        std::ostream& f,
-        const zsearch::CertificateValidation& certificateValidation);
+    std::ostream& f,
+    const zsearch::CertificateValidation& certificateValidation);
 
 void fast_dump_utc_unix_timestamp(std::ostream& f, uint32_t unix_time);

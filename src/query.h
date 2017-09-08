@@ -18,24 +18,24 @@
 #include <grpc++/server.h>
 
 #include "configuration.h"
-#include "utility.h"
 #include "inbound.h"
+#include "utility.h"
 
 namespace zdb {
 
 struct QueryServer {
-    std::unique_ptr<zsearch::QueryService::Service> impl;
-    std::unique_ptr<grpc::Server> server;
+  std::unique_ptr<zsearch::QueryService::Service> impl;
+  std::unique_ptr<grpc::Server> server;
 
-    QueryServer() = default;
-    QueryServer(QueryServer&&) = default;
-    QueryServer(const QueryServer&) = delete;
+  QueryServer() = default;
+  QueryServer(QueryServer&&) = default;
+  QueryServer(const QueryServer&) = delete;
 
-    ~QueryServer() {
-        if (server != nullptr) {
-            server.reset();
-        }
+  ~QueryServer() {
+    if (server != nullptr) {
+      server.reset();
     }
+  }
 };
 std::unique_ptr<QueryServer> make_query_server(uint16_t port,
                                                StoreContext* store_ctx);

@@ -18,8 +18,8 @@
 #define NOTREACHED() __builtin_unreachable()
 
 #define DISALLOW_COPY_ASSIGN(kls) \
-    kls(const kls&) = delete;     \
-    kls& operator=(const kls&) = delete
+  kls(const kls&) = delete;       \
+  kls& operator=(const kls&) = delete
 
 #ifdef __APPLE__
 #define OS_MAC

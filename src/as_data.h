@@ -30,60 +30,60 @@
 namespace zdb {
 
 struct ASData {
-    ASData() = default;
+  ASData() = default;
 
-    iptree_node_t* iptree = nullptr;
-    std::list<zsearch::ASAtom> atoms;
+  iptree_node_t* iptree = nullptr;
+  std::list<zsearch::ASAtom> atoms;
 };
 
 class ASTree {
-  public:
-    ASTree();
+ public:
+  ASTree();
 
-    // Loads a description of ASes from JSON, and builds a tree. Returns false
-    // on error.
-    bool load_json(std::ifstream& as_stream);
+  // Loads a description of ASes from JSON, and builds a tree. Returns false
+  // on error.
+  bool load_json(std::ifstream& as_stream);
 
-    size_t size() const;
+  size_t size() const;
 
-    // The result of indexing into an ASTree.
-    struct Lookup {
-        Lookup() = default;
-        Lookup(const Lookup&) = default;
-        Lookup(Lookup&&);
+  // The result of indexing into an ASTree.
+  struct Lookup {
+    Lookup() = default;
+    Lookup(const Lookup&) = default;
+    Lookup(Lookup&&);
 
-        // True if the lookup was covered.
-        bool found = false;
+    // True if the lookup was covered.
+    bool found = false;
 
-        // True if the lookup matched exactly (e.g. on a /32).
-        bool exact = false;
+    // True if the lookup matched exactly (e.g. on a /32).
+    bool exact = false;
 
-        // Populated when `found = true`.
-        zsearch::ASAtom as_atom;
+    // Populated when `found = true`.
+    zsearch::ASAtom as_atom;
 
-        // Returns a "failed" lookup with `found = exact = false`.
-        static const Lookup& failure();
-    };
+    // Returns a "failed" lookup with `found = exact = false`.
+    static const Lookup& failure();
+  };
 
-    class Handle {
-      public:
-        Lookup operator[](uint32_t ip) const;
-        Lookup operator[](const std::string& ip) const;
+  class Handle {
+   public:
+    Lookup operator[](uint32_t ip) const;
+    Lookup operator[](const std::string& ip) const;
 
-      private:
-        Handle(std::shared_ptr<ASData>* as_data_ptr);
-        std::shared_ptr<ASData>* m_as_data_ptr;
+   private:
+    Handle(std::shared_ptr<ASData>* as_data_ptr);
+    std::shared_ptr<ASData>* m_as_data_ptr;
 
-        friend class ASTree;
-    };
+    friend class ASTree;
+  };
 
-    Handle get_handle();
+  Handle get_handle();
 
-  private:
-    std::shared_ptr<ASData> load_json_impl(std::ifstream& as_stream);
+ private:
+  std::shared_ptr<ASData> load_json_impl(std::ifstream& as_stream);
 
-    std::shared_ptr<ASData> m_as_data;
-    DISALLOW_COPY_ASSIGN(ASTree);
+  std::shared_ptr<ASData> m_as_data;
+  DISALLOW_COPY_ASSIGN(ASTree);
 };
 
 }  // namespace zdb

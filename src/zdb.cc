@@ -14,8 +14,8 @@
 
 #include "zdb.h"
 
-#include <sstream>
 #include <cstdlib>
+#include <sstream>
 
 #include <rocksdb/db.h>
 
@@ -49,5 +49,5 @@ bool erase_db_at_path(const std::string& path) {
     }
 #endif
 
-    return false;
+  return false;
 }

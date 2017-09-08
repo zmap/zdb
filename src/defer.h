@@ -22,35 +22,34 @@
 namespace zdb {
 
 class Deferred {
-  private:
-    std::function<void()> m_f;
+ private:
+  std::function<void()> m_f;
 
-  public:
-    typedef void (*VoidFunctionPointer)();
+ public:
+  typedef void (*VoidFunctionPointer)();
 
-    template <typename F, typename... Args>
-    Deferred(F&& func, Args&&... args)
-            : m_f(std::bind(std::forward<F>(func),
-                            std::forward<Args>(args)...)) {}
+  template <typename F, typename... Args>
+  Deferred(F&& func, Args&&... args)
+      : m_f(std::bind(std::forward<F>(func), std::forward<Args>(args)...)) {}
 
-    Deferred(std::function<void()> func) : m_f(func) {}
+  Deferred(std::function<void()> func) : m_f(func) {}
 
-    Deferred(VoidFunctionPointer f) : m_f(std::function<void()>(f)) {}
+  Deferred(VoidFunctionPointer f) : m_f(std::function<void()>(f)) {}
 
-    Deferred(const Deferred&) = delete;
-    Deferred(Deferred&& other) : m_f(other.m_f) { other.m_f = nullptr; }
+  Deferred(const Deferred&) = delete;
+  Deferred(Deferred&& other) : m_f(other.m_f) { other.m_f = nullptr; }
 
-    ~Deferred() {
-        if (m_f) {
-            m_f();
-            m_f = nullptr;
-        }
+  ~Deferred() {
+    if (m_f) {
+      m_f();
+      m_f = nullptr;
     }
+  }
 };
 
 template <typename F, typename... Args>
 Deferred defer(F&& func, Args&&... args) {
-    return Deferred(std::forward<F>(func), std::forward<Args>(args)...);
+  return Deferred(std::forward<F>(func), std::forward<Args>(args)...);
 }
 
 }  // namespace zdb

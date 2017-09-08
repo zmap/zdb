@@ -48,16 +48,16 @@ const uint32_t CERT_STATUS_ALL_ERRORS = 0xFFFF00F0;
 bool is_error_status(const CertificateStatus& cert_status);
 
 struct CertificateVerifyResult {
-    CertificateVerifyResult();
-    CertificateVerifyResult(const CertificateVerifyResult&);
+  CertificateVerifyResult();
+  CertificateVerifyResult(const CertificateVerifyResult&);
 
-    zsearch::CertificateType cert_type = zsearch::CERTIFICATE_TYPE_RESERVED;
-    CertificateStatus cert_status = CERT_STATUS_OK;
+  zsearch::CertificateType cert_type = zsearch::CERTIFICATE_TYPE_RESERVED;
+  CertificateStatus cert_status = CERT_STATUS_OK;
 };
 
 struct ChainVerifyResult {
-    CertificateVerifyResult cert_verify_result;
-    CertChain chain;
+  CertificateVerifyResult cert_verify_result;
+  CertChain chain;
 };
 
 }  // namespace cert

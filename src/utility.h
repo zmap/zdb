@@ -17,8 +17,8 @@
 
 #include <atomic>
 #include <cstdarg>
-#include <string>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "zsearch_definitions/search.pb.h"
@@ -36,10 +36,10 @@ namespace zdb {
 
 extern std::atomic<int> server_state;
 void fatal(const char* logger_name, const char* log_message, ...)
-        __attribute__((noreturn));
+    __attribute__((noreturn));
 
 const google::protobuf::RepeatedPtrField<std::string>& tags_from_record(
-        const zsearch::Record& r);
+    const zsearch::Record& r);
 const google::protobuf::RepeatedPtrField<zsearch::Metadatum>&
 metadata_from_record(const zsearch::Record& r);
 
@@ -51,8 +51,8 @@ uint64_t get_largest_version(const std::vector<zsearch::Record>& records);
 
 enum ReturnStatus {
 
-    RETURN_SUCCESS,
-    RETURN_FAILURE
+  RETURN_SUCCESS,
+  RETURN_FAILURE
 
 };
 

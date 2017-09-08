@@ -21,21 +21,21 @@
 namespace zdb {
 
 class KafkaTopicDeltaHandler : public DeltaHandler {
-  public:
-    KafkaTopicDeltaHandler(KafkaProducerConnection*);
-    ~KafkaTopicDeltaHandler();
+ public:
+  KafkaTopicDeltaHandler(KafkaProducerConnection*);
+  ~KafkaTopicDeltaHandler();
 
-    void handle_delta(const StoreResult& res) override;
-    void handle_delta(const AnonymousResult& res) override;
+  void handle_delta(const StoreResult& res) override;
+  void handle_delta(const AnonymousResult& res) override;
 
-    const std::string& topic() const;
+  const std::string& topic() const;
 
-  private:
-    void handle_serialized(const std::string& s);
+ private:
+  void handle_serialized(const std::string& s);
 
-    KafkaProducerConnection* m_kafka;
+  KafkaProducerConnection* m_kafka;
 
-    DISALLOW_COPY_ASSIGN(KafkaTopicDeltaHandler);
+  DISALLOW_COPY_ASSIGN(KafkaTopicDeltaHandler);
 };
 
 }  // namespace zdb

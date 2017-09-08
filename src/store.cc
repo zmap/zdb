@@ -23,68 +23,67 @@ std::hash<::zsearch::AnonymousKey> std::less<::zsearch::AnonymousKey>::h;
 StoreResult::StoreResult() : success(false) {}
 
 StoreResult::StoreResult(StoreResult&& rhs) {
-    success = rhs.success;
-    delta.Swap(&rhs.delta);
+  success = rhs.success;
+  delta.Swap(&rhs.delta);
 }
 
 StoreResult& StoreResult::operator=(StoreResult&& rhs) {
-    success = rhs.success;
-    delta.Swap(&rhs.delta);
-    return *this;
+  success = rhs.success;
+  delta.Swap(&rhs.delta);
+  return *this;
 }
 
 StoreResult StoreResult::failure() {
-    StoreResult out;
-    return out;
+  StoreResult out;
+  return out;
 }
 
 StoreResult StoreResult::no_change() {
-    StoreResult out;
-    out.success = true;
-    out.delta.set_delta_type(zsearch::DT_NO_CHANGE);
-    out.delta.set_version(0);
-    return out;
+  StoreResult out;
+  out.success = true;
+  out.delta.set_delta_type(zsearch::DT_NO_CHANGE);
+  out.delta.set_version(0);
+  return out;
 }
 
 StoreResult StoreResult::from_key(const zdb::IPv4Key& key) {
-    StoreResult out;
-    out.delta.set_ip(key.ip);
-    return out;
+  StoreResult out;
+  out.delta.set_ip(key.ip);
+  return out;
 }
 
 StoreResult StoreResult::from_key(const zdb::DomainKey& key) {
-    StoreResult out;
-    out.delta.set_domain(key.domain);
-    return out;
+  StoreResult out;
+  out.delta.set_domain(key.domain);
+  return out;
 }
 
 PruneCheck::PruneCheck() : should_prune(false) {}
 
 PruneCheck::PruneCheck(PruneCheck&& rhs) {
-    should_prune = rhs.should_prune;
-    anon_key.Swap(&rhs.anon_key);
+  should_prune = rhs.should_prune;
+  anon_key.Swap(&rhs.anon_key);
 }
 
 PruneCheck& PruneCheck::operator=(PruneCheck&& rhs) {
-    should_prune = rhs.should_prune;
-    anon_key.Swap(&rhs.anon_key);
-    return *this;
+  should_prune = rhs.should_prune;
+  anon_key.Swap(&rhs.anon_key);
+  return *this;
 }
 
 PruneCheck PruneCheck::no_prune() {
-    PruneCheck ret;
-    return ret;
+  PruneCheck ret;
+  return ret;
 }
 
 void PruneStatistics::merge(const zdb::PruneStatistics& other) {
-    if (!other.success) {
-        success = false;
-    }
-    records_pruned += other.records_pruned;
-    records_read += other.records_read;
-    std::for_each(
-            other.pruned_per_key.begin(), other.pruned_per_key.end(),
-            [this](const std::pair<zsearch::AnonymousKey, size_t>& proto) {
-                pruned_per_key[proto.first] += proto.second;
-            });
+  if (!other.success) {
+    success = false;
+  }
+  records_pruned += other.records_pruned;
+  records_read += other.records_read;
+  std::for_each(other.pruned_per_key.begin(), other.pruned_per_key.end(),
+                [this](const std::pair<zsearch::AnonymousKey, size_t>& proto) {
+                  pruned_per_key[proto.first] += proto.second;
+                });
 }

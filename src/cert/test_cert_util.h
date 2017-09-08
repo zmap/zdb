@@ -30,7 +30,7 @@ namespace cert {
 ::X509* load_x509_from_pem(const std::string& path);
 
 std::shared_ptr<X509Certificate> X509Certificate_from_PEM(
-        const std::string& path);
+    const std::string& path);
 
 }  // namespace cert
 

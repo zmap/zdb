@@ -20,8 +20,8 @@
 
 #include <json/json.h>
 
-#include <rocksdb/env.h>
 #include <rocksdb/cache.h>
+#include <rocksdb/env.h>
 
 #include "anonymous_store.h"
 #include "as_data.h"
@@ -29,8 +29,8 @@
 #include "kafka_connection.h"
 #include "macros.h"
 #include "record.h"
-#include "store.h"
 #include "sharded_db.h"
+#include "store.h"
 #include "zdb.h"
 
 namespace zdb {
@@ -59,31 +59,31 @@ const std::string kProcessedCertificateOutboundName = "certificate_deltas";
 bool load_json_from_file(const std::string& filepath, Json::Value* out);
 
 struct ConfigValues {
-    struct BasicDatabase {
-        std::string db_path;
-        size_t worker_threads = 0;
-        bool enabled = true;
+  struct BasicDatabase {
+    std::string db_path;
+    size_t worker_threads = 0;
+    bool enabled = true;
 
-        bool should_open() const { return enabled && worker_threads > 0; }
-    };
+    bool should_open() const { return enabled && worker_threads > 0; }
+  };
 
-    struct InboundSource {
-        size_t worker_threads = 0;
-        bool enabled = true;
+  struct InboundSource {
+    size_t worker_threads = 0;
+    bool enabled = true;
 
-        bool should_open() const { return enabled && worker_threads > 0; }
-    };
+    bool should_open() const { return enabled && worker_threads > 0; }
+  };
 
-    BasicDatabase ipv4;
-    BasicDatabase domain;
-    BasicDatabase certificate;
-    BasicDatabase pubkey;
+  BasicDatabase ipv4;
+  BasicDatabase domain;
+  BasicDatabase certificate;
+  BasicDatabase pubkey;
 
-    InboundSource external_certificate;
-    InboundSource sct;
-    InboundSource processed_cert;
+  InboundSource external_certificate;
+  InboundSource sct;
+  InboundSource processed_cert;
 
-    static bool from_json(const Json::Value& config, ConfigValues* out);
+  static bool from_json(const Json::Value& config, ConfigValues* out);
 };
 
 }  // namespace zdb

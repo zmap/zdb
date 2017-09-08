@@ -15,30 +15,30 @@
 #ifndef ZDB_SRC_LOCATION_H
 #define ZDB_SRC_LOCATION_H
 
-#include <cstdint>
 #include <maxminddb.h>
+#include <cstdint>
 
 #include "record.h"
 
 namespace zdb {
 
 class GeoIP {
-  public:
-    GeoIP();
-    GeoIP(const std::string& mmdb_path);
-    ~GeoIP();
+ public:
+  GeoIP();
+  GeoIP(const std::string& mmdb_path);
+  ~GeoIP();
 
-    bool open(const std::string& mmdb_path);
-    bool is_open() const { return m_open; };
+  bool open(const std::string& mmdb_path);
+  bool is_open() const { return m_open; };
 
-    // Returns true on success
-    bool populate_atom(zsearch::LocationAtom* atom, uint32_t ip) const;
+  // Returns true on success
+  bool populate_atom(zsearch::LocationAtom* atom, uint32_t ip) const;
 
-  private:
-    mutable MMDB_s m_db;
-    bool m_open = false;
+ private:
+  mutable MMDB_s m_db;
+  bool m_open = false;
 
-    DISALLOW_COPY_ASSIGN(GeoIP);
+  DISALLOW_COPY_ASSIGN(GeoIP);
 };
 
 }  // namespace zdb

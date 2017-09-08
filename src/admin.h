@@ -25,18 +25,18 @@
 namespace zdb {
 
 struct AdminServer {
-    std::unique_ptr<zsearch::AdminService::Service> impl;
-    std::unique_ptr<grpc::Server> server;
+  std::unique_ptr<zsearch::AdminService::Service> impl;
+  std::unique_ptr<grpc::Server> server;
 
-    AdminServer() = default;
-    AdminServer(AdminServer&&) = default;
-    AdminServer(const AdminServer&) = delete;
+  AdminServer() = default;
+  AdminServer(AdminServer&&) = default;
+  AdminServer(const AdminServer&) = delete;
 
-    ~AdminServer() {
-        if (server != nullptr) {
-            server.reset();
-        }
+  ~AdminServer() {
+    if (server != nullptr) {
+      server.reset();
     }
+  }
 };
 
 std::unique_ptr<AdminServer> make_admin_server(uint16_t port,
