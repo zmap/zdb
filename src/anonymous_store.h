@@ -126,9 +126,9 @@ class AnonymousStore {
         }
 
         AnonIterator& operator=(AnonIterator&& other) {
-          m_it = std::move(other.m_it);
-          m_current = std::move(other.m_current);
-          return *this;
+            m_it = std::move(other.m_it);
+            m_current = std::move(other.m_current);
+            return *this;
         }
 
         value_type operator*() const { return m_current; }
@@ -532,6 +532,10 @@ AnonymousResult AnonymousStore<key_type>::put_processed_cert(Certificate& c) {
     orig_cert->set_post_process_timestamp(c.post_process_timestamp());
     orig_cert->mutable_parents()->CopyFrom(c.parents());
     orig_cert->set_expired(c.expired());
+    if (orig_cert->caa().result() == zsearch::CAA_RESULT_RESERVED &&
+        c.caa().result() != zsearch::CAA_RESULT_RESERVED) {
+        orig_cert->mutable_caa()->CopyFrom(c.caa());
+    }
 
     uint32_t now = static_cast<uint32_t>(std::time(nullptr));
     ar.set_updated_at(now);
