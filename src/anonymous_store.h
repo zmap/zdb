@@ -280,6 +280,7 @@ static zsearch::CTServerStatus* get_ctss(int index, zsearch::CTStatus* cts) {
       return cts->mutable_censys();
     case zsearch::CT_SERVER_CENSYS_DEVELOPMENT:
       return cts->mutable_censys_dev();
+    //
     case zsearch::CT_SERVER_GOOGLE_AVIATOR:
       return cts->mutable_google_aviator();
     case zsearch::CT_SERVER_GOOGLE_DAEDALUS:
@@ -296,6 +297,18 @@ static zsearch::CTServerStatus* get_ctss(int index, zsearch::CTStatus* cts) {
       return cts->mutable_google_submariner();
     case zsearch::CT_SERVER_GOOGLE_TESTTUBE:
       return cts->mutable_google_testtube();
+    //
+    case zsearch::CT_SERVER_GOOGLE_ARGON2017:
+      return cts->mutable_google_argon2017();
+    case zsearch::CT_SERVER_GOOGLE_ARGON2018:
+      return cts->mutable_google_argon2018();
+    case zsearch::CT_SERVER_GOOGLE_ARGON2019:
+      return cts->mutable_google_argon2019();
+    case zsearch::CT_SERVER_GOOGLE_ARGON2020:
+      return cts->mutable_google_argon2020();
+    case zsearch::CT_SERVER_GOOGLE_ARGON2021:
+      return cts->mutable_google_argon2021();
+    //
     case zsearch::CT_SERVER_DIGICERT_CT1:
       return cts->mutable_digicert_ct1();
     case zsearch::CT_SERVER_DIGICERT_CT2:
