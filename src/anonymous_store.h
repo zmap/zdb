@@ -543,6 +543,7 @@ AnonymousResult AnonymousStore<key_type>::put_processed_cert(Certificate& c) {
       c.caa().result() != zsearch::CAA_RESULT_RESERVED) {
     orig_cert->mutable_caa()->CopyFrom(c.caa());
   }
+  orig_cert->set_parent_spki_subject_fp(c.parent_spki_subject_fp());
 
   uint32_t now = static_cast<uint32_t>(std::time(nullptr));
   ar.set_updated_at(now);
