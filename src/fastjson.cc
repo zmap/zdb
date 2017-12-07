@@ -477,8 +477,10 @@ void fast_dump_ipv4_host(std::ostream& f,
   int lastproto = -1;
   int lastsubproto = -1;
 
+  std::set<uint16_t> ports;
   for (zsearch::Record& r : records) {
     // create new port clause
+    ports.insert(r.port());
     if (r.port() != lastport) {
       if (lastport >= 0) {  // if there was a previous port, must close
         f << "}},";
@@ -574,6 +576,20 @@ void fast_dump_ipv4_host(std::ostream& f,
     as_json["country_code"] = as_data.country_code();
     as_json["organization"] = as_data.organization();
     f << fastWriter.write(as_json);
+  }
+  // Write out all the ports on this host
+  if (!ports.empty()) {
+    f << ",\"ports\":[";
+    bool first = true;
+    for (const uint16_t port : ports) {
+        if (!first) {
+            f << ',';
+        } else {
+            first = false;
+        }
+        f << port;
+    }
+    f << ']';
   }
   // close IP address
   f << "}\n";
