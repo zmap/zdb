@@ -21,6 +21,7 @@
 #include "fastjson.h"
 #include "util/strings.h"
 #include "zsearch_definitions/certificate.pb.h"
+#include "zsearch_definitions/protocols.pb.h"
 
 namespace zdb {
 
@@ -456,5 +457,65 @@ TEST(FastDumpCertificate, FingeprintAndRaw) {
   ASSERT_TRUE(json_raw.isString());
   EXPECT_EQ(base64_encode(raw), json_raw.asString());
 }
+
+TEST(FastDumpIPv4Host, Ports) {
+  uint32_t ip = 0x01020304;
+  std::vector<zsearch::Record> records;
+  zsearch::Record r;
+
+  std::map<std::string, std::string> metadata;
+  std::set<std::string> tags;
+  zsearch::LocationAtom public_location;
+  zsearch::LocationAtom private_location;
+  zsearch::ASAtom as_data;
+  as_data.set_asn(1234);
+  as_data.set_description("test AS description");
+  r.set_ip(ip);
+  r.set_port(htons(static_cast<uint16_t>(443)));
+  r.set_protocol(zsearch::PROTO_HTTPS);
+  r.set_subprotocol(zsearch::SUBPROTO_TLS);
+  auto a = r.mutable_atom();
+  a->set_data("{\"technically\":\"json\"}");
+  records.push_back(r);
+
+  std::ostringstream f;
+  Json::FastWriter w;
+  w.omitEndingLineFeed();
+  fast_dump_ipv4_host(f, ip, "", records, metadata, tags, public_location,
+                      private_location, as_data, false, false, true, 0, w);
+  Json::Reader reader;
+  Json::Value root;
+  {
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+    const Json::Value& ports = root["ports"];
+    ASSERT_TRUE(ports.isArray());
+    EXPECT_EQ(1, ports.size());
+    EXPECT_EQ(443, ports[0].asInt());
+  }
+
+  f.str("");
+  f.clear();
+
+  r.set_port(htons(static_cast<uint16_t>(80)));
+  records.push_back(r);
+  fast_dump_ipv4_host(f, ip, "", records, metadata, tags, public_location,
+                      private_location, as_data, false, false, true, 0, w);
+  {
+    bool ok = reader.parse(f.str().c_str(), root);
+    ASSERT_TRUE(ok);
+    const Json::Value& ports = root["ports"];
+    ASSERT_TRUE(ports.isArray());
+    EXPECT_EQ(2, ports.size());
+    std::set<uint16_t> actual;
+    for (Json::ArrayIndex i = 0; i < 2; ++i) {
+        actual.insert(ports[i].asInt());
+    }
+    std::set<uint16_t> expected{443, 80};
+    EXPECT_EQ(expected, actual);
+  }
+}
+
+
 
 }  // namespace zdb

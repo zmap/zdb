@@ -587,7 +587,7 @@ void fast_dump_ipv4_host(std::ostream& f,
         } else {
             first = false;
         }
-        f << port;
+        f << ntohs(port);
     }
     f << ']';
   }
