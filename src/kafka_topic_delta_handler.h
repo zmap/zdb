@@ -16,6 +16,7 @@
 #define ZDB_SRC_KAFKA_TOPIC_DELTA_HANDLER_H
 
 #include "delta_handler.h"
+#include "kafka_connection.h"
 #include "macros.h"
 
 namespace zdb {
