@@ -354,8 +354,9 @@ static zsearch::CTServerStatus* get_ctss(int index, zsearch::CTStatus* cts) {
     case zsearch::CT_SERVER_STARTSSL_CT:
       return cts->mutable_startssl_ct();
     case zsearch::CT_SERVER_WOTRUS_CTLOG:
-      return cts->mutable_startssl_ct();
+      return cts->mutable_wotrus_ctlog();
     case zsearch::CT_SERVER_WOTRUS_CTLOG3:
+      return cts->mutable_wotrus_ctlog3();
     // GDCA
     case zsearch::CT_SERVER_GDCA_CT:
       return cts->mutable_gdca_ct();
