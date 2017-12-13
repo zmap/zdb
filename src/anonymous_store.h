@@ -276,11 +276,12 @@ AnonymousResult AnonymousStore<key_type>::put(AnonymousRecord& rec) {
 
 static zsearch::CTServerStatus* get_ctss(int index, zsearch::CTStatus* cts) {
   switch (index) {
+    // Censys
     case zsearch::CT_SERVER_CENSYS_PRODUCTION:
       return cts->mutable_censys();
     case zsearch::CT_SERVER_CENSYS_DEVELOPMENT:
       return cts->mutable_censys_dev();
-    //
+    // Google
     case zsearch::CT_SERVER_GOOGLE_AVIATOR:
       return cts->mutable_google_aviator();
     case zsearch::CT_SERVER_GOOGLE_DAEDALUS:
@@ -297,66 +298,96 @@ static zsearch::CTServerStatus* get_ctss(int index, zsearch::CTStatus* cts) {
       return cts->mutable_google_submariner();
     case zsearch::CT_SERVER_GOOGLE_TESTTUBE:
       return cts->mutable_google_testtube();
-    //
-    case zsearch::CT_SERVER_GOOGLE_ARGON2017:
-      return cts->mutable_google_argon2017();
-    case zsearch::CT_SERVER_GOOGLE_ARGON2018:
-      return cts->mutable_google_argon2018();
-    case zsearch::CT_SERVER_GOOGLE_ARGON2019:
-      return cts->mutable_google_argon2019();
-    case zsearch::CT_SERVER_GOOGLE_ARGON2020:
-      return cts->mutable_google_argon2020();
-    case zsearch::CT_SERVER_GOOGLE_ARGON2021:
-      return cts->mutable_google_argon2021();
-    //
+    // Google Argon
+    case zsearch::CT_SERVER_GOOGLE_ARGON_2017:
+      return cts->mutable_google_argon_2017();
+    case zsearch::CT_SERVER_GOOGLE_ARGON_2018:
+      return cts->mutable_google_argon_2018();
+    case zsearch::CT_SERVER_GOOGLE_ARGON_2019:
+      return cts->mutable_google_argon_2019();
+    case zsearch::CT_SERVER_GOOGLE_ARGON_2020:
+      return cts->mutable_google_argon_2020();
+    case zsearch::CT_SERVER_GOOGLE_ARGON_2021:
+      return cts->mutable_google_argon_2021();
+    // Cloudflare
+    case zsearch::CT_SERVER_CLOUDFLARE_NIMBUS_2017:
+      return cts->mutable_cloudflare_nimbus_2017();
+    case zsearch::CT_SERVER_CLOUDFLARE_NIMBUS_2018:
+      return cts->mutable_cloudflare_nimbus_2018();
+    case zsearch::CT_SERVER_CLOUDFLARE_NIMBUS_2019:
+      return cts->mutable_cloudflare_nimbus_2019();
+    case zsearch::CT_SERVER_CLOUDFLARE_NIMBUS_2020:
+      return cts->mutable_cloudflare_nimbus_2020();
+    case zsearch::CT_SERVER_CLOUDFLARE_NIMBUS_2021:
+      return cts->mutable_cloudflare_nimbus_2021();
+    // Digicert
     case zsearch::CT_SERVER_DIGICERT_CT1:
       return cts->mutable_digicert_ct1();
     case zsearch::CT_SERVER_DIGICERT_CT2:
       return cts->mutable_digicert_ct2();
+    // Izenpe
     case zsearch::CT_SERVER_IZENPE_COM_CT:
       return cts->mutable_izenpe_com_ct();
     case zsearch::CT_SERVER_IZENPE_EUS_CT:
       return cts->mutable_izenpe_eus_ct();
+    // Symantec
     case zsearch::CT_SERVER_SYMANTEC_WS_CT:
       return cts->mutable_symantec_ws_ct();
     case zsearch::CT_SERVER_SYMANTEC_WS_VEGA:
       return cts->mutable_symantec_ws_vega();
     case zsearch::CT_SERVER_SYMANTEC_WS_SIRIUS:
       return cts->mutable_symantec_ws_sirius();
-    case zsearch::CT_SERVER_WOSIGN_CTLOG:
-      return cts->mutable_wosign_ctlog();
-    case zsearch::CT_SERVER_WOSIGN_CT:
-      return cts->mutable_wosign_ct();
-    case zsearch::CT_SERVER_CNNIC_CTSERVER:
-      return cts->mutable_cnnic_ctserver();
-    case zsearch::CT_SERVER_GDCA_CT:
-      return cts->mutable_gdca_ct();
-    case zsearch::CT_SERVER_STARTSSL_CT:
-      return cts->mutable_startssl_ct();
-    case zsearch::CT_SERVER_CERTLY_LOG:
-      return cts->mutable_certly_log();
-    case zsearch::CT_SERVER_VENAFI_API_CTLOG:
-      return cts->mutable_venafi_api_ctlog();
-    case zsearch::CT_SERVER_VENAFI_API_CTLOG_GEN2:
-      return cts->mutable_venafi_api_ctlog_gen2();
     case zsearch::CT_SERVER_SYMANTEC_WS_DENEB:
       return cts->mutable_symantec_ws_deneb();
-    case zsearch::CT_SERVER_NORDU_CT_PLAUSIBLE:
-      return cts->mutable_nordu_ct_plausible();
+    // Comodo
     case zsearch::CT_SERVER_COMODO_DODO:
       return cts->mutable_comodo_dodo();
     case zsearch::CT_SERVER_COMODO_MAMMOTH:
       return cts->mutable_comodo_mammoth();
     case zsearch::CT_SERVER_COMODO_SABRE:
       return cts->mutable_comodo_sabre();
-    case zsearch::CT_SERVER_SHECA_CT:
-      return cts->mutable_sheca_ct();
+    // Wosign, StartCom, WoTrus
+    case zsearch::CT_SERVER_WOSIGN_CTLOG:
+      return cts->mutable_wosign_ctlog();
+    case zsearch::CT_SERVER_WOSIGN_CT:
+      return cts->mutable_wosign_ct();
+    case zsearch::CT_SERVER_STARTSSL_CT:
+      return cts->mutable_startssl_ct();
+    case zsearch::CT_SERVER_WOTRUS_CTLOG:
+      return cts->mutable_wotrus_ctlog();
+    case zsearch::CT_SERVER_WOTRUS_CTLOG3:
+      return cts->mutable_wotrus_ctlog3();
+    // GDCA
+    case zsearch::CT_SERVER_GDCA_CT:
+      return cts->mutable_gdca_ct();
     case zsearch::CT_SERVER_GDCA_CTLOG:
       return cts->mutable_gdca_ctlog();
-    case zsearch::CT_SERVER_CERTIFICATETRANSPARENCY_CN_CT:
-      return cts->mutable_certificatetransparency_cn_ct();
+    case zsearch::CT_SERVER_GDCA_LOG:
+      return cts->mutable_gdca_log();
+    case zsearch::CT_SERVER_GDCA_LOG2:
+      return cts->mutable_gdca_log2();
+    // Venafi
+    case zsearch::CT_SERVER_VENAFI_API_CTLOG:
+      return cts->mutable_venafi_api_ctlog();
+    case zsearch::CT_SERVER_VENAFI_API_CTLOG_GEN2:
+      return cts->mutable_venafi_api_ctlog_gen2();
+    // Nordu
+    case zsearch::CT_SERVER_NORDU_CT_PLAUSIBLE:
+      return cts->mutable_nordu_ct_plausible();
+    // Let's Encrypt
     case zsearch::CT_SERVER_LETSENCRYPT_CT_CLICKY:
       return cts->mutable_letsencrypt_ct_clicky();
+    // Other
+    case zsearch::CT_SERVER_CNNIC_CTSERVER:
+      return cts->mutable_cnnic_ctserver();
+    case zsearch::CT_SERVER_CERTLY_LOG:
+      return cts->mutable_certly_log();
+    case zsearch::CT_SERVER_SHECA_CT:
+      return cts->mutable_sheca_ct();
+    case zsearch::CT_SERVER_BEHIND_THE_SOFA:
+      return cts->mutable_behind_the_sofa();
+    case zsearch::CT_SERVER_CERTIFICATETRANSPARENCY_CN_CT:
+      return cts->mutable_certificatetransparency_cn_ct();
   }
   return nullptr;
 }
