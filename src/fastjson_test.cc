@@ -30,6 +30,9 @@ namespace {
 const std::string kTestHexSHA256Fp =
     "98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4";
 
+const std::string kTestHexParentSPKISubjectFp =
+    "9796a321baf649be55f91791d49020ecba2ebce6b5feee95733b85063c8f67a6";
+
 const std::string kParents[] = {
     "731d3d9cfaa061487a1d71445a42f67df0afca2a6c2d2f98ff7b3ce112b1f568",
     "25847d668eb4f04fdd40b12b6b0740c567da7d024308eb6c2c96fe41d9de218d",
@@ -437,6 +440,10 @@ TEST(FastDumpCertificate, FingeprintAndRaw) {
   c.set_sha256fp(fp);
   std::string raw = util::Strings::random_bytes(1024);
   c.set_raw(raw);
+  std::string parent_spki_subject_fp;
+  ASSERT_TRUE(util::Strings::hex_decode(kTestHexParentSPKISubjectFp,
+      &parent_spki_subject_fp));
+  c.set_parent_spki_subject_fp(parent_spki_subject_fp);
 
   std::ostringstream f;
   Json::FastWriter w;
@@ -452,6 +459,12 @@ TEST(FastDumpCertificate, FingeprintAndRaw) {
   const Json::Value& json_fp = root["fingerprint_sha256"];
   ASSERT_TRUE(json_fp.isString());
   EXPECT_EQ(kTestHexSHA256Fp, json_fp.asString());
+
+  const Json::Value& json_parent_spki_subject_fp =
+        root["parent_spki_subject_fingerprint"];
+  ASSERT_TRUE(json_parent_spki_subject_fp.isString());
+  EXPECT_EQ(kTestHexParentSPKISubjectFp,
+      json_parent_spki_subject_fp.asString());
 
   const Json::Value& json_raw = root["raw"];
   ASSERT_TRUE(json_raw.isString());

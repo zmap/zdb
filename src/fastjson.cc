@@ -329,6 +329,13 @@ void fast_dump_certificate(std::ostream& f,
     fast_dump_repeated_bytes(f, certificate.parents());
   }
 
+  if (!certificate.parent_spki_subject_fp().empty()) {
+    f << ",\"parent_spki_subject_fingerprint\":"
+      << '\"'
+      << util::Strings::hex_encode(certificate.parent_spki_subject_fp())
+      << '\"';
+  }
+
   f << ",\"ct\":";
   fast_dump_ct(f, certificate.ct());
 
