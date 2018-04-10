@@ -17,5 +17,5 @@
 using namespace zdb;
 
 const size_t shard_for<IPv4Key>::total_shards = 256;
-
+const size_t shard_for<DomainKey>::total_shards = 256;
 const size_t shard_for<HashKey>::total_shards = 256;

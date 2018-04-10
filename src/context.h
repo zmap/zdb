@@ -172,7 +172,7 @@ class RocksShardedContext : public RocksContext {
 class DBContext : public Context {
  public:
   DBContext(std::unique_ptr<RocksShardedContext> ipv4_rctx,
-            std::unique_ptr<RocksSingleContext> domain_rctx,
+            std::unique_ptr<RocksShardedContext> domain_rctx,
             std::unique_ptr<RocksShardedContext> certificate_rctx);
 
   bool open_all();
@@ -189,7 +189,7 @@ class DBContext : public Context {
 
  private:
   std::unique_ptr<RocksShardedContext> m_ipv4_rctx;
-  std::unique_ptr<RocksSingleContext> m_domain_rctx;
+  std::unique_ptr<RocksShardedContext> m_domain_rctx;
   std::unique_ptr<RocksShardedContext> m_certificate_rctx;
 
   std::unique_ptr<IPv4DB> m_ipv4;
