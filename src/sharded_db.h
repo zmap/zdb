@@ -46,16 +46,6 @@ struct shard_for<IPv4Key> {
 };
 
 template <>
-struct shard_for<DomainKey> {
-  static const size_t total_shards;
-  size_t operator()(const DomainKey& key) const {
-    assert(!key.domain.empty());
-    uint8_t b = key.domain[0];
-    return static_cast<size_t>(b);
-  }
-};
-
-template <>
 struct shard_for<HashKey> {
   static const size_t total_shards;
   size_t operator()(const HashKey& key) const {

@@ -158,7 +158,7 @@ std::shared_ptr<rocksdb::Options> new_domain_rocks_options() {
       rocksdb::NewLRUCache(kDefaultCacheSize);
   std::shared_ptr<rocksdb::Options> opt = new_rocks_options(default_env, cache);
   opt->prefix_extractor = DomainKey::prefix_extractor();
-  opt->max_background_compactions = 1;
+  opt->max_background_compactions = 11;
   opt->max_background_flushes = 1;
   return opt;
 }

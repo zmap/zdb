@@ -36,7 +36,6 @@
 namespace zdb {
 
 const size_t kIPv4ShardCount = 256;
-const size_t kDomainShardCount = 256;
 const size_t kCertificateShardCount = 256;
 
 const std::string kIPv4InboundName = "ipv4";

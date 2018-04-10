@@ -236,7 +236,7 @@ void RocksShardedContext::close() {
 }
 
 DBContext::DBContext(std::unique_ptr<RocksShardedContext> ipv4_rctx,
-                     std::unique_ptr<RocksShardedContext> domain_rctx,
+                     std::unique_ptr<RocksSingleContext> domain_rctx,
                      std::unique_ptr<RocksShardedContext> certificate_rctx)
     : m_ipv4_rctx(std::move(ipv4_rctx)),
       m_domain_rctx(std::move(domain_rctx)),
@@ -384,7 +384,7 @@ DeltaContext::new_certificates_to_process_delta_handler() {
 std::unique_ptr<DBContext> create_db_context_from_config_values(
     const ConfigValues& config_values) {
   std::unique_ptr<RocksShardedContext> ipv4;
-  std::unique_ptr<RocksShardedContext> domain;
+  std::unique_ptr<RocksSingleContext> domain;
   std::unique_ptr<RocksShardedContext> certificate;
 
   if (config_values.ipv4.should_open()) {
@@ -395,7 +395,7 @@ std::unique_ptr<DBContext> create_db_context_from_config_values(
   }
   if (config_values.domain.should_open()) {
     log_info("context", "creating domain context");
-    domain.reset(new RocksShardedContext(config_values.domain.db_path, kDomainShardCount));
+    domain.reset(new RocksSingleContext(config_values.domain.db_path));
     domain->set_options(new_domain_rocks_options());
   }
   if (config_values.certificate.should_open() ||
