@@ -434,6 +434,10 @@ class AdminServiceImpl final : public zsearch::AdminService::Service {
       if (max_records && ++count > max_records) {
         return;
       }
+      // Ignore anything that hasn't been through the certificate daemon yet
+      if (!it->second.certificate().post_processed()) {
+        continue;
+      }
       // Only update expiration if `not_valid_before` and
       // `not_valid_after` are actually set.
       if (it->second.certificate().not_valid_before() &&
